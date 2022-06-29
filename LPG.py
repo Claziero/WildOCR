@@ -9,6 +9,7 @@ initial_point = (120, 35)
 middle_point = (380, 35)
 final_point = (680, 35)
 
+# Paths
 empty_plate_path = 'assets/plates/empty-plate.png'
 font_path = 'assets/plates/plates1999.ttf'
 output_path = 'output/'
