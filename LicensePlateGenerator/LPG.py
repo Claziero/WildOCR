@@ -1,4 +1,5 @@
 import random
+import os
 from tqdm import tqdm
 from sys import argv
 from PIL import Image, ImageDraw, ImageFont
@@ -121,6 +122,10 @@ def create_plate(plate:str = None, gray:bool = True) -> None:
 
 # Driver function
 def main(nplates:int, gray:bool) -> None:
+    # Create the output directory if necessary
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
     # Create the file "generated.txt" if not exists
     f = open(output_path + 'generated.txt', 'a+')
     f.close()
