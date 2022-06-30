@@ -24,8 +24,6 @@ def generate_dataset_binary(path, output_path) -> None:
             np.save(output_path + "/" + image, img)
     return
 
-# generate_dataset_binary(images_path, 'dataset/')
-
 # Function to generate the dataset in .txt format
 def generate_dataset_txt(path) -> None:
     # Create a new output file "dataset.txt"
@@ -46,5 +44,28 @@ def generate_dataset_txt(path) -> None:
     dataset.close()
     return
 
+# Function to generate the dataset in .csv format
+def generate_dataset_csv(path) -> None:
+    # Create a new output file "dataset.csv"
+    dataset = open('dataset.csv', 'w+')
+
+    # Get all the images in the path
+    images = os.listdir(path)
+    # For each image in the path
+    for elem in tqdm(images):
+        if elem.endswith('.png'):
+            img = Image.open(path + elem)
+            img = np.array(img)
+            img = img.flatten()
+            img = img.tolist()
+            dataset.write(str(img)[1:-1] + ',' + elem[:-4] + '\n')
+    
+    # Close the dataset file
+    dataset.close()
+    return
+
+
 if __name__ == '__main__':
-    generate_dataset_txt(images_path)
+    generate_dataset_csv(images_path)
+    # generate_dataset_txt(images_path)
+    # generate_dataset_binary(images_path, 'dataset/')
