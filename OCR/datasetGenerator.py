@@ -4,6 +4,10 @@ from PIL import Image
 import numpy as np
 from tqdm import tqdm
 
+# Define colors
+TEXT_GREEN = '\033[92m'
+TEXT_RESET = '\033[0m'
+
 # Input path containing images
 images_path = '../LicensePlateGenerator/output/'
 
@@ -77,5 +81,8 @@ def generate_dataset_csv(path) -> None:
 
 
 if __name__ == '__main__':
+    print(TEXT_GREEN 
+        + '>> Generating dataset from {} ...'.format(images_path)
+        + TEXT_RESET)
     generate_dataset_csv(images_path)
     # generate_dataset_binary(images_path, 'dataset/')

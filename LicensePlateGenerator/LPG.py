@@ -5,6 +5,10 @@ from sys import argv
 from PIL import Image, ImageDraw, ImageFont
 from math import floor
 
+# Define colors
+TEXT_GREEN = '\033[92m'
+TEXT_RESET = '\033[0m'
+
 # Constants (image size: <1000, 219>)
 max_number_width = 300
 font_size = 220
@@ -130,6 +134,10 @@ def main(nplates:int, gray:bool) -> None:
     f = open(output_path + 'generated.txt', 'a+')
     f.close()
 
+    print(TEXT_GREEN 
+        + '>> Generating {} plates in {}'.format(nplates, 'GRAY' if gray == True else 'COLOR')
+        + TEXT_RESET)
+    
     # Generate 1000 random plates
     for _ in tqdm(range(nplates)):
         create_plate(gray = gray)
