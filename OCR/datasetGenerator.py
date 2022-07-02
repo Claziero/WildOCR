@@ -7,6 +7,35 @@ from tqdm import tqdm
 # Input path containing images
 images_path = '../LicensePlateGenerator/output/'
 
+# Function to convert a number plate string in 134 ints
+def convert_to_ints(string) -> list[int]:
+    # Convert the string to a list of ints
+    ints = []
+
+    letter = [0] * 26
+    letter[ord(string[0]) - 65] = 1
+    ints.extend(letter)
+    letter = [0] * 26
+    letter[ord(string[1]) - 65] = 1
+    ints.extend(letter)
+    number = [0] * 10
+    number[ord(string[2]) - 48] = 1
+    ints.extend(number)
+    number = [0] * 10
+    number[ord(string[3]) - 48] = 1
+    ints.extend(number)
+    number = [0] * 10
+    number[ord(string[4]) - 48] = 1
+    ints.extend(number)
+    letter = [0] * 26
+    letter[ord(string[5]) - 65] = 1
+    ints.extend(letter)
+    letter = [0] * 26
+    letter[ord(string[6]) - 65] = 1
+    ints.extend(letter)
+
+    return ints
+
 # Function to generate the dataset in .npy format
 def generate_dataset_binary(path, output_path) -> None:
     # Get all the images in the path
@@ -24,26 +53,6 @@ def generate_dataset_binary(path, output_path) -> None:
             np.save(output_path + "/" + image, img)
     return
 
-# Function to generate the dataset in .txt format
-def generate_dataset_txt(path) -> None:
-    # Create a new output file "dataset.txt"
-    dataset = open('dataset.txt', 'w+')
-
-    # Get all the images in the path
-    images = os.listdir(path)
-    # For each image in the path
-    for elem in tqdm(images):
-        if elem.endswith('.png'):
-            img = Image.open(path + elem)
-            img = np.array(img)
-            img = img.flatten()
-            img = img.tolist()
-            dataset.write('{' + str(img) + ',' + elem[:-4] + '}\n')
-    
-    # Close the dataset file
-    dataset.close()
-    return
-
 # Function to generate the dataset in .csv format
 def generate_dataset_csv(path) -> None:
     # Create a new output file "dataset.csv"
@@ -58,7 +67,9 @@ def generate_dataset_csv(path) -> None:
             img = np.array(img)
             img = img.flatten()
             img = img.tolist()
-            dataset.write(str(img)[1:-1] + ',' + elem[:-4] + '\n')
+            dataset.write(str(img)[1:-1] + ',' 
+                + elem[:-4] + ','
+                + str(convert_to_ints(elem[:-4]))[1:-1] + '\n')
     
     # Close the dataset file
     dataset.close()
@@ -67,5 +78,4 @@ def generate_dataset_csv(path) -> None:
 
 if __name__ == '__main__':
     generate_dataset_csv(images_path)
-    # generate_dataset_txt(images_path)
     # generate_dataset_binary(images_path, 'dataset/')
