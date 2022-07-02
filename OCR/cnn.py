@@ -14,6 +14,7 @@
 
 from sklearn.model_selection import train_test_split
 import os
+import time
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,6 +26,15 @@ TEXT_GREEN = '\033[92m'
 TEXT_BLUE = '\033[94m'
 TEXT_RED = '\033[91m'
 TEXT_RESET = '\033[0m'
+
+if torch.cuda.is_available():
+    print(TEXT_GREEN 
+        + '>> CUDA is available ({}).'.format(torch.cuda.get_device_name())
+        + TEXT_RESET)
+    gpu = torch.device("cuda:0")
+    cpu = torch.device("cpu")
+else:
+    gpu = cpu = torch.device("cpu")
 
 # Class for the Convolution Neural Network
 class ConvNet(nn.Module):
@@ -78,11 +88,11 @@ class ConvNet(nn.Module):
         for epoch in range(epochs):
             for i, data in enumerate(X_train.values):
                 # Convert the data to torch tensor
-                data = torch.from_numpy(data.reshape(1, 1, 44, 200)).float()
+                data = torch.from_numpy(data.reshape(1, 1, 44, 200)).float().to(gpu)
                 # Forward pass
-                output = self.forward(data)
+                output = self.forward(data).to(gpu)
                 # Calculate the loss
-                loss = criterion(output[0], torch.from_numpy(Y_train.values[i]).float())
+                loss = criterion(output[0], torch.from_numpy(Y_train.values[i]).float().to(gpu))
                 # Backward and optimize
                 optimizer.zero_grad()
                 loss.backward()
@@ -103,9 +113,9 @@ class ConvNet(nn.Module):
             correct = 0
             for i, data in enumerate(X_test.values):
                 # Convert the data to torch tensor
-                data = torch.from_numpy(data.reshape(1, 1, 44, 200)).float()
+                data = torch.from_numpy(data.reshape(1, 1, 44, 200)).float().to(gpu)
                 # Forward pass
-                output = self.forward(data)
+                output = self.forward(data).to(cpu)
                 # Check the results
                 correct += self.check_results(output[0], Y_test.values[i])
 
@@ -176,8 +186,9 @@ class ConvNet(nn.Module):
 
 
 # Driver function
-def driver(dataset_path:str, train:bool=False, save:bool=True, epochs:int=4, learning_rate:float=0.001) -> None:
+def driver(dataset_path:str, load:str=None, save:str='model.plk', epochs:int=4, learning_rate:float=0.001) -> None:
     # Load the dataset
+    print(TEXT_GREEN + '>> Loading dataset...' + TEXT_RESET)
     dataset = pd.read_csv(dataset_path, header=None)
 
     # Split and normalize the dataset
@@ -186,38 +197,46 @@ def driver(dataset_path:str, train:bool=False, save:bool=True, epochs:int=4, lea
 
     # Split the dataset into training and test set
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+    print(TEXT_GREEN + '>> Dataset loaded.' + TEXT_RESET)
     
     # Create a network object
     net = ConvNet()
 
     # Load the trained network model if required
-    if not train and os.path.exists('model.pkl'):
-        net.load_state_dict(torch.load('model.pkl'))
-        print(TEXT_GREEN + '>> Model loaded successfully.' + TEXT_RESET)
-    elif not train:
+    train = False
+    if load is not None and os.path.exists(load):
+        net.load_state_dict(torch.load(load))
+        print(TEXT_GREEN 
+            + '>> Model loaded successfully ({}).'.format(load)
+            + TEXT_RESET)
+    elif load is not None:
         print(TEXT_RED + '>> No model found. Training ...' + TEXT_RESET)
         train = True
 
-    if train:
+    # Move the network to the gpu (if available)
+    net.to(gpu)
+
+    # Train the network if required
+    if load is None or train:
         print(TEXT_GREEN 
             + '>> Training for {} epochs with learning rate = {} ...'.format(epochs, learning_rate)
             + TEXT_RESET)
+        start_time = time.time()
         net.train_net(X_train, Y_train, epochs=epochs, learning_rate=learning_rate)
+        end_time = time.time()
+        print(TEXT_GREEN 
+            + '>> Training finished in {} seconds.'.format(end_time - start_time) 
+            + TEXT_RESET)
 
     # Save the trained network model if required
-    if train and save:
-        net.save('model.pkl')
+    if train and save is not None:
+        print(TEXT_GREEN + '>> Saving model to {} ...'.format(save) + TEXT_RESET)
+        net.save(save)
 
     # Test the network
     net.test_net(X_test, Y_test)
     return
 
 if __name__ == '__main__':
-    driver('dataset.csv')
-
-
-# Show an image of the training set
-# arr = X_train.iloc[0].values.reshape(44, 200)
-# p = torch.from_numpy(arr).float() # Unnecessary
-# plt.imshow(arr, cmap='gray')
-# plt.show()
+    driver('dataset.csv', load='model.plk', save='model.plk') # To use pre-trained model
+    # driver('dataset.csv', save='model.plk', epochs=10, learning_rate=0.001) # To train a new model
