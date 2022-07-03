@@ -1,2 +1,2 @@
-model*.pkl
-dataset.csv
+*.pkl
+*.csv

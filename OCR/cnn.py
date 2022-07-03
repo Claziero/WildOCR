@@ -106,7 +106,7 @@ class ConvNet(nn.Module):
         return
 
     # Function to test the network
-    def test_net(self, X_test:torch.Tensor, Y_test:torch.Tensor) -> None:
+    def test_net(self, X_test:torch.Tensor, Y_test:torch.Tensor, save_preds:str=None) -> None:
         # Test the network
         self.eval()
         with torch.no_grad():
@@ -119,14 +119,19 @@ class ConvNet(nn.Module):
                 # Check the results
                 correct += self.check_results(output[0], Y_test.values[i])
 
+                # Save the predictions if required
+                if save_preds is not None:
+                    self.save_predictions(X_test = X_test.values[i],
+                        Y_pred = output[0],
+                        Y_test = Y_test.values[i],
+                        filename = save_preds)
+
             print(TEXT_BLUE 
                 + 'Accuracy: {:.2f}%'.format(100 * correct / (7 * len(X_test)))
                 + TEXT_RESET)
             print(TEXT_BLUE 
                 + 'Total: {}, Correct: {}'.format(7 * len(X_test), correct)
                 + TEXT_RESET)
-            
-        print(TEXT_GREEN + '>>  Finished Testing' + TEXT_RESET)
         return
 
     # Function to save the network
@@ -183,60 +188,200 @@ class ConvNet(nn.Module):
         
         return correct
 
+    # Function to convert the network output to a string
+    def output_to_string(self, net_output:torch.Tensor) -> str:
+        # Convert the output to a string
+        out_string = ''
+        out_index = np.argmax(net_output[0:26])
+        out_string += chr(out_index + 65)
+        out_index = np.argmax(net_output[26:52])
+        out_string += chr(out_index + 65)
+        out_index = np.argmax(net_output[52:62])
+        out_string += chr(out_index + 48)
+        out_index = np.argmax(net_output[62:72])
+        out_string += chr(out_index + 48)
+        out_index = np.argmax(net_output[72:82])
+        out_string += chr(out_index + 48)
+        out_index = np.argmax(net_output[82:108])
+        out_string += chr(out_index + 65)
+        out_index = np.argmax(net_output[108:134])
+        out_string += chr(out_index + 65)
+        return out_string
+
+    # Function to save the predictions in string format
+    def save_predictions(self, X_test:np.ndarray, Y_pred:torch.Tensor, Y_test:np.ndarray, filename:str) -> None:
+        f = open(filename, 'a+')
+        
+        # Convert the output to a string
+        out_string = self.output_to_string(Y_pred)
+        test_string = self.output_to_string(Y_test)
+        X_test = str(np.array(X_test).flatten().tolist())[1:-1]
+
+        # Write the output to the file
+        f.write(X_test + ',' + out_string + ',' + test_string + '\n')
+        f.close()
+        return
 
 
-# Driver function
-def driver(dataset_path:str, load:str=None, save:str='model.plk', epochs:int=4, learning_rate:float=0.001) -> None:
-    # Load the dataset
-    print(TEXT_GREEN + '>> Loading dataset...' + TEXT_RESET)
-    dataset = pd.read_csv(dataset_path, header=None)
+# Class to drive the program
+class Driver:
+    def __init__(self) -> None:
+        self.dataset:pd.DataFrame = None
+        self.X:pd.DataFrame = None
+        self.Y:pd.DataFrame = None
+        self.X_train:pd.DataFrame = None
+        self.Y_train:pd.DataFrame = None
+        self.X_test:pd.DataFrame = None
+        self.Y_test:pd.DataFrame = None
+        self.net:ConvNet = ConvNet().to(gpu)
 
-    # Split and normalize the dataset
-    X = dataset.iloc[:, :8800] / 255
-    Y = dataset.iloc[:, 8801:]
+        self.save_model:bool = False
+        self.save_model_path:str = None
+        self.save_preds:bool = False
+        self.save_preds_path:str = None
+        self.model_loaded:bool = False
+        return
 
-    # Split the dataset into training and test set
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
-    print(TEXT_GREEN + '>> Dataset loaded.' + TEXT_RESET)
-    
-    # Create a network object
-    net = ConvNet()
+    # Function to load the dataset
+    def load_dataset(self, filename:str) -> None:
+        # Load the dataset
+        print(TEXT_GREEN + '>> Loading dataset ...' + TEXT_RESET)
+        self.dataset = pd.read_csv(filename)
 
-    # Load the trained network model if required
-    train = False
-    if load is not None and os.path.exists(load):
-        net.load_state_dict(torch.load(load))
-        print(TEXT_GREEN 
-            + '>> Model loaded successfully ({}).'.format(load)
-            + TEXT_RESET)
-    elif load is not None:
-        print(TEXT_RED + '>> No model found. Training ...' + TEXT_RESET)
-        train = True
+        # Split and normalize the dataset
+        self.X = self.dataset.iloc[:, :8800] / 255
+        self.Y = self.dataset.iloc[:, 8801:]
+        
+        # Split the dataset into training and testing
+        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X, self.Y, test_size=0.2, random_state=42)
+        
+        print(TEXT_GREEN + '>> Dataset loaded.' + TEXT_RESET)
+        return
 
-    # Move the network to the gpu (if available)
-    net.to(gpu)
+    # Function to load the model
+    def load_model(self, filename:str) -> None:
+        # Load the model
+        print(TEXT_GREEN + '>> Loading model...' + TEXT_RESET)
 
-    # Train the network if required
-    if load is None or train:
+        if os.path.exists(filename):
+            self.net.load_state_dict(torch.load(filename))
+            self.model_loaded = True
+            print(TEXT_GREEN + '>> Model loaded successfully ({}).'.format(filename) + TEXT_RESET)
+        else:
+            print(TEXT_RED + '>> Model file does not exist ({}).'.format(filename) + TEXT_RESET)
+            
+        return
+
+    # Function to train the network
+    def train(self, epochs:int, learning_rate:float) -> None:
+        # Train the network
         print(TEXT_GREEN 
             + '>> Training for {} epochs with learning rate = {} ...'.format(epochs, learning_rate)
             + TEXT_RESET)
+
         start_time = time.time()
-        net.train_net(X_train, Y_train, epochs=epochs, learning_rate=learning_rate)
+        self.net.train_net(self.X_train, self.Y_train, epochs, learning_rate)
+        self.model_loaded = True
         end_time = time.time()
+
         print(TEXT_GREEN 
             + '>> Training finished in {} seconds.'.format(end_time - start_time) 
             + TEXT_RESET)
 
-    # Save the trained network model if required
-    if train and save is not None:
-        print(TEXT_GREEN + '>> Saving model to {} ...'.format(save) + TEXT_RESET)
-        net.save(save)
+        # Save the trained network model if required
+        if self.save_model:
+            print(TEXT_GREEN + '>> Saving model to {} ...'.format(self.save_model_path) + TEXT_RESET)
+            self.net.save(self.save_model_path)
+        return
 
-    # Test the network
-    net.test_net(X_test, Y_test)
+    # Function to test the network
+    def test(self) -> None:
+        # Test the network
+        print(TEXT_GREEN 
+            + '>> Testing the network on {} samples ...'.format(len(self.X_test))
+            + TEXT_RESET)
+
+        start_time = time.time()
+        self.net.test_net(self.X_test, self.Y_test, self.save_preds_path)
+        end_time = time.time()
+
+        print(TEXT_GREEN 
+            + '>> Testing finished in {} seconds.'.format(end_time - start_time) 
+            + TEXT_RESET)
+        return
+
+
+# Main function
+def driver_main():
+    d = Driver()
+    choice = 0
+
+    while choice != '4':
+        # Get the user input
+        print('>> Driver helper. Select the function to run. Type:')
+        print('  0. Load dataset.')
+        print('  1. Train the network.')
+        print('  2. Test the network.')
+        print('  3. Load a network pretrained model.')
+        print('  4. Exit.')
+        choice = input('Enter your choice: ')
+
+        # Load the dataset
+        if choice == '0':
+            filename = input('Enter the filename: ')
+            d.load_dataset(filename)
+
+        # Train the network
+        elif choice == '1':
+            if d.dataset is None:
+                print(TEXT_RED + '>> Dataset not loaded.' + TEXT_RESET)
+                dataset_path = input('Enter the path to the dataset: ')
+                d.load_dataset(dataset_path)
+
+            save = input('Enter the path to save the trained model (if any): ')
+            if save != '':
+                d.save_model_path = save
+                d.save_model = True
+
+            epochs = int(input('Enter the number of epochs to train: '))
+            learning_rate = float(input('Enter the learning rate: '))
+            d.train(epochs, learning_rate)
+
+        # Test the network
+        elif choice == '2':
+            if d.dataset is None:
+                print(TEXT_RED + '>> Dataset not loaded.' + TEXT_RESET)
+                dataset_path = input('Enter the path to the dataset: ')
+                d.load_dataset(dataset_path)
+
+            if not d.model_loaded:
+                print(TEXT_RED + '>> Model not loaded.' + TEXT_RESET)
+                load = input('Enter the path to the trained model: ')
+                d.load_model(load)
+
+            preds = input('Enter the path to save the predictions (if any): ')
+            if preds != '':
+                f = open(preds, 'w+')
+                f.close()
+                d.save_preds_path = preds
+                d.save_preds = True
+
+            d.test()
+
+        # Load a network pretrained model
+        elif choice == '3':
+            load = input('Enter the path to the pretrained model: ')
+            d.load_model(load)
+
+        # Exit
+        elif choice == '4':
+            print(TEXT_RED + '>> Exiting.' + TEXT_RESET)
+            break
+
+        # Invalid input
+        else:
+            print(TEXT_RED + '>> Invalid choice.' + TEXT_RESET)
     return
 
 if __name__ == '__main__':
-    driver('dataset.csv', load='model.plk', save='model.plk') # To use pre-trained model
-    # driver('dataset.csv', save='model.plk', epochs=10, learning_rate=0.001) # To train a new model
+    driver_main()
