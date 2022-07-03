@@ -22,10 +22,11 @@ import torch
 import torch.nn as nn
 
 # Define colors
-TEXT_GREEN = '\033[92m'
-TEXT_BLUE = '\033[94m'
-TEXT_RED = '\033[91m'
 TEXT_RESET = '\033[0m'
+TEXT_RED = '\033[91m'
+TEXT_GREEN = '\033[92m'
+TEXT_YELLOW = '\033[93m'
+TEXT_BLUE = '\033[94m'
 
 if torch.cuda.is_available():
     print(TEXT_GREEN 
@@ -226,9 +227,6 @@ class ConvNet(nn.Module):
 # Class to drive the program
 class Driver:
     def __init__(self) -> None:
-        self.dataset:pd.DataFrame = None
-        self.X:pd.DataFrame = None
-        self.Y:pd.DataFrame = None
         self.X_train:pd.DataFrame = None
         self.Y_train:pd.DataFrame = None
         self.X_test:pd.DataFrame = None
@@ -242,20 +240,46 @@ class Driver:
         self.model_loaded:bool = False
         return
 
-    # Function to load the dataset
+    # Function to load the dataset (full)
     def load_dataset(self, filename:str) -> None:
         # Load the dataset
         print(TEXT_GREEN + '>> Loading dataset ...' + TEXT_RESET)
-        self.dataset = pd.read_csv(filename)
+        data = pd.read_csv(filename, header=None)
 
         # Split and normalize the dataset
-        self.X = self.dataset.iloc[:, :8800] / 255
-        self.Y = self.dataset.iloc[:, 8801:]
+        X = data.iloc[:, :8800] / 255
+        Y = data.iloc[:, 8801:]
         
         # Split the dataset into training and testing
-        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(self.X, self.Y, test_size=0.2, random_state=42)
+        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
         
         print(TEXT_GREEN + '>> Dataset loaded.' + TEXT_RESET)
+        return
+
+    # Function to load the train dataset
+    def load_train(self, filename:str) -> None:
+        # Load the dataset
+        print(TEXT_GREEN + '>> Loading train dataset ...' + TEXT_RESET)
+        data = pd.read_csv(filename, header=None)
+
+        # Split and normalize the dataset
+        self.X_train = data.iloc[:, :8800] / 255
+        self.Y_train = data.iloc[:, 8801:]
+        
+        print(TEXT_GREEN + '>> Train dataset loaded.' + TEXT_RESET)
+        return
+
+    # Function to load the test dataset
+    def load_test(self, filename:str) -> None:
+        # Load the dataset
+        print(TEXT_GREEN + '>> Loading test dataset ...' + TEXT_RESET)
+        data = pd.read_csv(filename, header=None)
+
+        # Split and normalize the dataset
+        self.X_test = data.iloc[:, :8800] / 255
+        self.Y_test = data.iloc[:, 8801:]
+        
+        print(TEXT_GREEN + '>> Test dataset loaded.' + TEXT_RESET)
         return
 
     # Function to load the model
@@ -318,49 +342,110 @@ def driver_main():
 
     while choice != '4':
         # Get the user input
-        print('>> Driver helper. Select the function to run. Type:')
+        print(TEXT_YELLOW + '>> Driver helper. Select the function to run. Type:' + TEXT_RESET)
         print('  0. Load dataset.')
         print('  1. Train the network.')
         print('  2. Test the network.')
         print('  3. Load a network pretrained model.')
         print('  4. Exit.')
-        choice = input('Enter your choice: ')
+        choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
         # Load the dataset
         if choice == '0':
-            filename = input('Enter the filename: ')
-            d.load_dataset(filename)
+            print(TEXT_YELLOW + '>> Select the option. Type:' + TEXT_RESET)
+            print('  0. Load entire dataset (train + test).')
+            print('  1. Load train dataset only.')
+            print('  2. Load test dataset only.')
+            print('  3. Back.')
+            choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
+
+            # Back
+            if choice == '3':
+                continue
+
+            # Load entire dataset
+            elif choice == '0':
+                filename = input('Enter the filename [Enter = \"dataset.csv\"]: ')
+                if filename == '':
+                    filename = 'dataset.csv'
+                d.load_dataset(filename)
+
+            # Load train dataset only
+            elif choice == '1':
+                filename = input('Enter the filename [Enter = \"dataset_train.csv\"]: ')
+                if filename == '':
+                    filename = 'dataset_train.csv'
+                d.load_train(filename)
+
+            # Load test dataset only
+            elif choice == '2':
+                filename = input('Enter the filename [Enter = \"dataset_test.csv\"]: ')
+                if filename == '':
+                    filename = 'dataset_test.csv'
+                d.load_test(filename)
+
+            # Invalid choice
+            else:
+                print(TEXT_RED + '>> Invalid choice.' + TEXT_RESET)
+                continue
 
         # Train the network
         elif choice == '1':
-            if d.dataset is None:
-                print(TEXT_RED + '>> Dataset not loaded.' + TEXT_RESET)
-                dataset_path = input('Enter the path to the dataset: ')
-                d.load_dataset(dataset_path)
+            if d.X_train is None:
+                print(TEXT_RED + '>> Training dataset not loaded.' + TEXT_RESET)
+                dataset_path = input('Enter the path to the training dataset [Enter = \"dataset_train.csv\"]: ')
+                if dataset_path == '':
+                    dataset_path = 'dataset_train.csv'
+                d.load_train(dataset_path)
 
-            save = input('Enter the path to save the trained model (if any): ')
-            if save != '':
+            save = input('Enter the path to save the trained model [Enter = \"model.pkl\" | \"n\" = None]: ')
+            if save == '':
+                d.save_model_path = 'model.pkl'
+                d.save_model = True
+            elif save == 'n':
+                d.save_model = False
+            else:
                 d.save_model_path = save
                 d.save_model = True
 
-            epochs = int(input('Enter the number of epochs to train: '))
-            learning_rate = float(input('Enter the learning rate: '))
+            epochs = input('Enter the number of epochs to train [Enter = \"3\"]: ')
+            if epochs == '':
+                epochs = 3
+            epochs = int(epochs)
+
+            learning_rate = input('Enter the learning rate [Enter = \"0.001\"]: ')
+            if learning_rate == '':
+                learning_rate = 0.001
+            learning_rate = float(learning_rate)
+
             d.train(epochs, learning_rate)
 
         # Test the network
         elif choice == '2':
-            if d.dataset is None:
-                print(TEXT_RED + '>> Dataset not loaded.' + TEXT_RESET)
-                dataset_path = input('Enter the path to the dataset: ')
-                d.load_dataset(dataset_path)
+            if d.X_test is None:
+                print(TEXT_RED + '>> Test dataset not loaded.' + TEXT_RESET)
+                dataset_path = input('Enter the path to the test dataset [Enter = \"dataset_test.csv\"]: ')
+                if dataset_path == '':
+                    dataset_path = 'dataset_test.csv'
+                d.load_test(dataset_path)
 
             if not d.model_loaded:
                 print(TEXT_RED + '>> Model not loaded.' + TEXT_RESET)
-                load = input('Enter the path to the trained model: ')
+                load = input('Enter the path to the trained model [Enter = \"model.pkl\"]: ')
+                if load == '':
+                    load = 'model.pkl'
                 d.load_model(load)
 
-            preds = input('Enter the path to save the predictions (if any): ')
-            if preds != '':
+            preds = input('Enter the path to save the predictions [Enter = \"preds.csv\" | \"n\" = None]: ')
+            if preds == '':
+                preds = 'preds.csv'
+                f = open(preds, 'w+')
+                f.close()
+                d.save_preds_path = preds
+                d.save_preds = True
+            elif preds == 'n':
+                d.save_preds = False
+            else:
                 f = open(preds, 'w+')
                 f.close()
                 d.save_preds_path = preds
@@ -370,17 +455,21 @@ def driver_main():
 
         # Load a network pretrained model
         elif choice == '3':
-            load = input('Enter the path to the pretrained model: ')
+            load = input('Enter the path to the pretrained model [Enter = \"model.pkl\"]: ')
+            if load == '':
+                load = 'model.pkl'
             d.load_model(load)
 
         # Exit
         elif choice == '4':
-            print(TEXT_RED + '>> Exiting.' + TEXT_RESET)
+            print(TEXT_YELLOW + '>> Exiting.' + TEXT_RESET)
             break
 
         # Invalid input
         else:
-            print(TEXT_RED + '>> Invalid choice.' + TEXT_RESET)
+            print(TEXT_YELLOW + '>> Invalid choice.' + TEXT_RESET)
+            continue
+
     return
 
 if __name__ == '__main__':
