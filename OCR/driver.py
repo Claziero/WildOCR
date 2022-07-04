@@ -144,9 +144,9 @@ class Driver:
 # Main function
 def driver_main():
     d = Driver()
-    choice = 0
+    choice = 1
 
-    while choice != '4':
+    while choice != '0':
         # Get the user input
         print(TEXT_YELLOW + '>> Driver helper. Select the function to run. Type:' + TEXT_RESET)
         print('  1. Load dataset.')
