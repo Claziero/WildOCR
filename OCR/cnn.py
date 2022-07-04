@@ -12,9 +12,9 @@
     series of fully connected layer.
 """
 
-import io
 from math import ceil, sqrt
 from sklearn.model_selection import train_test_split
+from io import StringIO
 import os
 import time
 import pandas as pd
@@ -234,7 +234,7 @@ class ConvNet(nn.Module):
                 lines += f.readline()
 
         # Convert the lines to a dataframe
-        lines = io.StringIO(lines)
+        lines = StringIO(lines)
         lines = pd.read_csv(lines, header=None)
         lines = lines.iloc[:num]
 
@@ -345,7 +345,7 @@ class Driver:
         end_time = time.time()
 
         print(TEXT_GREEN 
-            + '>> Training finished in {} seconds.'.format(end_time - start_time) 
+            + '>> Training finished in {:.2f} seconds.'.format(end_time - start_time) 
             + TEXT_RESET)
 
         # Save the trained network model if required
@@ -366,7 +366,7 @@ class Driver:
         end_time = time.time()
 
         print(TEXT_GREEN 
-            + '>> Testing finished in {} seconds.'.format(end_time - start_time) 
+            + '>> Testing finished in {:.2f} seconds.'.format(end_time - start_time) 
             + TEXT_RESET)
         return
 

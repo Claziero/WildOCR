@@ -88,7 +88,7 @@ def split_dataset(path:str, train:str, test:str, perc:int=80) -> None:
 
     # Split the dataset in train and test
     train_dataset = dataset.sample(frac=perc/100, random_state=42)
-    test_dataset = dataset.drop(train_dataset.index)
+    test_dataset = dataset.drop(train_dataset.index).sample(frac=1, random_state=42)
 
     # Write the datasets
     train_dataset.to_csv(train_d, index=False, header=False, line_terminator='\n')
