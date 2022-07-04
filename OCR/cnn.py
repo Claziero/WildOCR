@@ -12,6 +12,8 @@
     series of fully connected layer.
 """
 
+import io
+from math import ceil, sqrt
 from sklearn.model_selection import train_test_split
 import os
 import time
@@ -223,6 +225,40 @@ class ConvNet(nn.Module):
         f.close()
         return
 
+    # Function to show "num" images with their predictions
+    def show_predictions(self, num:int, preds:str='preds.csv') -> None:
+        # Read the predictions file and get the first "num" images
+        with open(preds, 'r') as f:
+            lines = ''
+            for _ in range(num):
+                lines += f.readline()
+
+        # Convert the lines to a dataframe
+        lines = io.StringIO(lines)
+        lines = pd.read_csv(lines, header=None)
+        lines = lines.iloc[:num]
+
+        # Get the images and predictions
+        img = lines.iloc[:, :-2]
+        Y_pred = lines.iloc[:, -2]
+
+        # Plot
+        rows = ceil(sqrt(num))
+        fig = plt.figure(figsize=(rows, rows / 2), constrained_layout=True)
+        for i in range(num):
+            # Get the image, prediction and test string
+            img_array = np.array(img.iloc[i]).reshape(44, 200)
+            pred_array = Y_pred.iloc[i]
+            
+            # Plot the image
+            fig.add_subplot(rows, rows, i + 1)
+            plt.imshow(img_array, cmap='gray')
+            plt.axis('off')
+            plt.title(pred_array)
+
+        plt.show()
+        return
+
 
 # Class to drive the program
 class Driver:
@@ -334,6 +370,12 @@ class Driver:
             + TEXT_RESET)
         return
 
+    # Function to show the predictions with the images associated with them
+    def show_preds(self, filename:str, num:int=64) -> None:
+        # Show the predictions
+        self.net.show_predictions(num, filename)
+        return
+
 
 # Main function
 def driver_main():
@@ -343,42 +385,43 @@ def driver_main():
     while choice != '4':
         # Get the user input
         print(TEXT_YELLOW + '>> Driver helper. Select the function to run. Type:' + TEXT_RESET)
-        print('  0. Load dataset.')
-        print('  1. Train the network.')
-        print('  2. Test the network.')
-        print('  3. Load a network pretrained model.')
-        print('  4. Exit.')
+        print('  1. Load dataset.')
+        print('  2. Train the network.')
+        print('  3. Test the network.')
+        print('  4. Load a network pretrained model.')
+        print('  5. Show some images with their predictions.')
+        print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
         # Load the dataset
-        if choice == '0':
+        if choice == '1':
             print(TEXT_YELLOW + '>> Select the option. Type:' + TEXT_RESET)
-            print('  0. Load entire dataset (train + test).')
-            print('  1. Load train dataset only.')
-            print('  2. Load test dataset only.')
-            print('  3. Back.')
+            print('  1. Load entire dataset (train + test).')
+            print('  2. Load train dataset only.')
+            print('  3. Load test dataset only.')
+            print('  0. Back.')
             choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
             # Back
-            if choice == '3':
+            if choice == '0':
                 continue
 
             # Load entire dataset
-            elif choice == '0':
+            elif choice == '1':
                 filename = input('Enter the filename [Enter = \"dataset.csv\"]: ')
                 if filename == '':
                     filename = 'dataset.csv'
                 d.load_dataset(filename)
 
             # Load train dataset only
-            elif choice == '1':
+            elif choice == '2':
                 filename = input('Enter the filename [Enter = \"dataset_train.csv\"]: ')
                 if filename == '':
                     filename = 'dataset_train.csv'
                 d.load_train(filename)
 
             # Load test dataset only
-            elif choice == '2':
+            elif choice == '3':
                 filename = input('Enter the filename [Enter = \"dataset_test.csv\"]: ')
                 if filename == '':
                     filename = 'dataset_test.csv'
@@ -390,7 +433,7 @@ def driver_main():
                 continue
 
         # Train the network
-        elif choice == '1':
+        elif choice == '2':
             if d.X_train is None:
                 print(TEXT_RED + '>> Training dataset not loaded.' + TEXT_RESET)
                 dataset_path = input('Enter the path to the training dataset [Enter = \"dataset_train.csv\"]: ')
@@ -421,7 +464,7 @@ def driver_main():
             d.train(epochs, learning_rate)
 
         # Test the network
-        elif choice == '2':
+        elif choice == '3':
             if d.X_test is None:
                 print(TEXT_RED + '>> Test dataset not loaded.' + TEXT_RESET)
                 dataset_path = input('Enter the path to the test dataset [Enter = \"dataset_test.csv\"]: ')
@@ -454,14 +497,27 @@ def driver_main():
             d.test()
 
         # Load a network pretrained model
-        elif choice == '3':
+        elif choice == '4':
             load = input('Enter the path to the pretrained model [Enter = \"model.pkl\"]: ')
             if load == '':
                 load = 'model.pkl'
             d.load_model(load)
 
+        # Show some images with their predictions
+        elif choice == '5':
+            preds = input('Enter the path to the predictions file [Enter = \"preds.csv\"]: ')
+            if preds == '':
+                preds = 'preds.csv'
+
+            num = input('Enter the number of images to show [Enter = \"64\"]: ')
+            if num == '':
+                num = 64
+            num = int(num)
+
+            d.show_preds(preds, num)
+
         # Exit
-        elif choice == '4':
+        elif choice == '0':
             print(TEXT_YELLOW + '>> Exiting.' + TEXT_RESET)
             break
 
