@@ -173,7 +173,7 @@ def create_noisy_plates(plate:str=None) -> None:
     # Add the noise to the image
     noisy = np.asarray(img) + noise_img
     noisy = Image.fromarray(noisy)
-    noisy = noisy.convert('RGB')
+    noisy = noisy.convert('L')
 
     # Save and close the image
     noisy.save(output_path + plate + '.png')
@@ -203,6 +203,7 @@ def main(nplates:int, gray:bool, perc:int) -> None:
             + TEXT_RESET)
         for _ in tqdm(range(nplates - noisy)):
             create_plate(gray=gray)
+    
     if noisy:
         print(TEXT_GREEN 
             + '>> Generating {} plates in GRAY (NOISY)'.format(noisy)
