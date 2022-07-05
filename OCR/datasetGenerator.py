@@ -1,9 +1,9 @@
 # Generate a new dataset file starting from "License Plate Generator" output images
 import os
-from PIL import Image
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from PIL import Image
 
 # Define colors
 TEXT_RESET = '\033[0m'
@@ -41,7 +41,7 @@ def convert_to_ints(string:str) -> list[int]:
 
 # Function to generate the dataset in .csv format
 def generate_dataset_csv(path:str, filename:str) -> None:
-    # Create a new output file "dataset.csv"
+    # Create a new output file "filename"
     dataset = open(filename, 'w+')
 
     # Get all the images in the path
