@@ -40,7 +40,7 @@ class Driver:
         self.model_loaded:bool = False
         return
 
-    # Function to load the dataset (full)
+    # Function to load the dataset (full) (not-used)
     def load_dataset(self, filename:str) -> None:
         # Load the dataset
         print(TEXT_GREEN + '>> Loading dataset ...' + TEXT_RESET)
@@ -168,14 +168,20 @@ def driver_main():
 
             # Back
             if choice == '0':
+                choice = 1
                 continue
 
             # Load entire dataset
             elif choice == '1':
-                filename = input('Enter the filename [Enter = \"dataset.csv\"]: ')
-                if filename == '':
-                    filename = 'dataset.csv'
-                d.load_dataset(filename)
+                train = input('Enter the filename for training dataset [Enter = \"dataset_train.csv\"]: ')
+                if train == '':
+                    train = 'dataset_train.csv'
+                d.load_train(train)
+
+                test = input('Enter the filename for test dataset [Enter = \"dataset_test.csv\"]: ')
+                if test == '':
+                    test = 'dataset_test.csv'
+                d.load_test(test)
 
             # Load train dataset only
             elif choice == '2':

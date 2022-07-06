@@ -5,7 +5,7 @@
   > Input image is a grayscale image of a number plate
     of size <w:200, h:44, c:1>
 
-  > Output is a vector of length 134, where each element is a probability of the
+  > Output is a vector of length 225, where each element is a probability of the
     corresponding digit to be a certain letter/number.
 
   > The network consists of a series of convolutional layers, followed by a
@@ -48,7 +48,7 @@ class ConvNet(nn.Module):
             torch.nn.MaxPool2d(kernel_size = 2, stride = 2)
         )
 
-        # Fully connected layer: <w:48, h:9, c:16> -> (26 * 4 + 10 * 3) = 134 neurons
+        # Fully connected layer: <w:48, h:9, c:16> -> (32 * 7) + 1 = 225 neurons
         self.fc = torch.nn.Sequential(
             torch.nn.Linear(16 * 9 * 48, 16 * 9 * 24),
             torch.nn.ReLU(),
@@ -56,7 +56,7 @@ class ConvNet(nn.Module):
             torch.nn.ReLU(),
             torch.nn.Linear(16 * 9 * 12, 72 * 12),
             torch.nn.ReLU(),
-            torch.nn.Linear(72 * 12, 26 * 4 + 10 * 3)
+            torch.nn.Linear(72 * 12, 32 * 7 + 1)
         )
         return
 
@@ -118,10 +118,10 @@ class ConvNet(nn.Module):
                         filename = save_preds)
 
             print(TEXT_BLUE 
-                + 'Accuracy: {:.2f}%'.format(100 * correct / (7 * len(X_test)))
+                + 'Accuracy: {:.2f}%'.format(100 * correct / (8 * len(X_test)))
                 + TEXT_RESET)
             print(TEXT_BLUE 
-                + 'Total: {}, Correct: {}'.format(7 * len(X_test), correct)
+                + 'Total: {}, Correct: {}'.format(8 * len(X_test), correct)
                 + TEXT_RESET)
         return
 
@@ -135,68 +135,47 @@ class ConvNet(nn.Module):
     def check_results(self, net_output:torch.Tensor, Y_test:np.ndarray) -> int:
         correct = 0
 
-        # Check the first 26 positions (first letter)
-        out_index = np.argmax(net_output[0:26])
-        sol_index = np.argmax(Y_test[0:26])
-        if out_index == sol_index:
+        # For every character in the net output
+        for i in range(7):
+            # Check the 32 positions
+            out_index = np.argmax(net_output[32 * i:32 * (i + 1)])
+            sol_index = np.argmax(Y_test[32 * i:32 * (i + 1)])
+            if out_index == sol_index:
+                correct += 1
+
+        # Check the last bit discriminating the plates
+        if round(float(net_output[-1])) == Y_test[-1]:
             correct += 1
 
-        # Check the second 26 positions (second letter)
-        out_index = np.argmax(net_output[26:52])
-        sol_index = np.argmax(Y_test[26:52])
-        if out_index == sol_index:
-            correct += 1
-        
-        # Check the third 10 positions (first number)
-        out_index = np.argmax(net_output[52:62])
-        sol_index = np.argmax(Y_test[52:62])
-        if out_index == sol_index:
-            correct += 1
-
-        # Check the fourth 10 positions (second number)
-        out_index = np.argmax(net_output[62:72])
-        sol_index = np.argmax(Y_test[62:72])
-        if out_index == sol_index:
-            correct += 1
-
-        # Check the fifth 10 positions (third number)
-        out_index = np.argmax(net_output[72:82])
-        sol_index = np.argmax(Y_test[72:82])
-        if out_index == sol_index:
-            correct += 1
-
-        # Check the sixth 26 positions (third letter)
-        out_index = np.argmax(net_output[82:108])
-        sol_index = np.argmax(Y_test[82:108])
-        if out_index == sol_index:
-            correct += 1
-
-        # Check the seventh 26 positions (fourth letter)
-        out_index = np.argmax(net_output[108:134])
-        sol_index = np.argmax(Y_test[108:134])
-        if out_index == sol_index:
-            correct += 1
-        
         return correct
+
+    # Function to calculate the gap of the characters
+    def calculate_gap(self, index:int) -> int:
+        # Numbers
+        if index >= 22:
+            return -39
+
+        # Letters
+        gap = 0
+        if index > ord('I') - 66:
+            gap += 1
+        if index > ord('O') - 67:
+            gap += 1
+        if index > ord('Q') - 68:
+            gap += 1
+        if index > ord('U') - 69:
+            gap += 1
+        return gap
 
     # Function to convert the network output to a string
     def output_to_string(self, net_output:torch.Tensor) -> str:
         # Convert the output to a string
         out_string = ''
-        out_index = np.argmax(net_output[0:26])
-        out_string += chr(out_index + 65)
-        out_index = np.argmax(net_output[26:52])
-        out_string += chr(out_index + 65)
-        out_index = np.argmax(net_output[52:62])
-        out_string += chr(out_index + 48)
-        out_index = np.argmax(net_output[62:72])
-        out_string += chr(out_index + 48)
-        out_index = np.argmax(net_output[72:82])
-        out_string += chr(out_index + 48)
-        out_index = np.argmax(net_output[82:108])
-        out_string += chr(out_index + 65)
-        out_index = np.argmax(net_output[108:134])
-        out_string += chr(out_index + 65)
+
+        for i in range(7):
+            out_index = np.argmax(net_output[32 * i:32 * (i + 1)])
+            out_string += chr(out_index + 65 + self.calculate_gap(out_index))
+
         return out_string
 
     # Function to save the predictions in string format
@@ -229,20 +208,26 @@ class ConvNet(nn.Module):
         # Get the images and predictions
         img = lines.iloc[:, :-2]
         Y_pred = lines.iloc[:, -2]
+        Y_test = lines.iloc[:, -1]
 
         # Plot
         rows = ceil(sqrt(num))
         fig = plt.figure(figsize=(rows, rows / 2), constrained_layout=True)
         for i in range(num):
             # Get the image, prediction and test string
-            img_array = np.array(img.iloc[i]).reshape(44, 200)
-            pred_array = Y_pred.iloc[i]
+            # If the expected value of the string ends with a letter, than is a CAR plate
+            if Y_test.iloc[i][-1].isalpha():
+                img_array = np.array(img.iloc[i]).reshape(44, 200)
+            else:
+                img_array = np.array(img.iloc[i]).reshape(83, 106)
+            
+            prediction = Y_pred.iloc[i]
             
             # Plot the image
             fig.add_subplot(rows, rows, i + 1)
             plt.imshow(img_array, cmap='gray')
             plt.axis('off')
-            plt.title(pred_array)
+            plt.title(prediction)
 
         plt.show()
         return
