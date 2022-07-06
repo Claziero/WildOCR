@@ -6,6 +6,7 @@ from tqdm import tqdm
 from math import floor
 from perlin_noise import PerlinNoise
 from PIL import Image, ImageDraw, ImageFont
+from matplotlib import pyplot as plt
 
 # Define colors
 TEXT_RESET = '\033[0m'
@@ -25,11 +26,10 @@ stroke_width = 0
 # Constants for moto plates (image size: <106, 83>)
 moto_image_width = 106
 moto_image_height = 83
-moto_max_number_width = 90 ###############################
+moto_max_number_width = 90
 moto_font_size = 40
-moto_initial_point = (25, 8) #############################
-moto_middle_point = (8, 47) ##############################
-moto_final_point = (0, 0) ###############################
+moto_initial_point = (25, 8)
+moto_middle_point = (8, 47)
 moto_stroke_width = 0
 
 # Paths
@@ -122,8 +122,8 @@ def generate_plate(plate:str, moto:bool=False) -> Image:
         return img
 
 # Function to check if a plate has been already created
-def check_plate_number(plate:str) -> bool:
-    with open(output_path + 'generated.txt', 'r') as f:
+def check_plate_number(plate:str, moto:bool) -> bool:
+    with open(output_path + 'generated{}.txt'.format('-m' if moto else ''), 'r') as f:
         line = f.readline()
         while line != '':
             if plate in line:
@@ -138,7 +138,7 @@ def create_plate(plate:str=None, gray:bool=True, moto:bool=False) -> None:
         plate = generate_plate_number(moto)
 
     # Check if the plate has been already generated
-    while check_plate_number(plate):
+    while check_plate_number(plate, moto=moto):
         plate = generate_plate_number(moto)
 
     # Create the image
@@ -153,35 +153,42 @@ def create_plate(plate:str=None, gray:bool=True, moto:bool=False) -> None:
     img.close()
 
     # Save the plate into a text file
-    with open(output_path + 'generated.txt', 'a+') as f:
+    with open(output_path + 'generated{}.txt'.format('-m' if moto else ''), 'a+') as f:
         f.write(plate + '\n')
     return
 
-# Function to create plates with random noise (gray only)
-def create_noisy_plates(plate:str=None, moto:bool=False) -> None:
-    noise1 = PerlinNoise(octaves=random.randint(1, 5), seed=random.randint(1, 10000))
-    noise2 = PerlinNoise(octaves=random.randint(1, 10), seed=random.randint(1, 10000))
-    noise3 = PerlinNoise(octaves=random.randint(1, 50), seed=random.randint(1, 10000))
-    noise4 = PerlinNoise(octaves=random.randint(1, 100), seed=random.randint(1, 10000))
+# Function to generate a random noise image
+def generate_noise_image(width:int=1000, height:int=1000) -> np.ndarray:
+    noise1 = PerlinNoise(octaves=random.randint(20, 100), seed=random.randint(1, 10000))
+    noise2 = PerlinNoise(octaves=random.randint(50, 100), seed=random.randint(1, 10000))
 
+    pic = []
+    for i in range(height):
+        row = []
+        for j in range(width):
+            noise_val = random.random() * noise1([i/width, j/height])
+            noise_val += random.random() * noise2([i/width, j/height])
+
+            row.append(noise_val)
+        pic.append(row)
+
+    # Plot the noise image
+    # plt.imshow(pic, cmap='gray')
+    # plt.show()
+
+    return np.array(pic) * 255
+
+# Function to create plates with random noise (gray only)
+def create_noisy_plate(plate:str=None, moto:bool=False, noise:np.ndarray=None) -> None:
     if moto:
         xpix, ypix = moto_image_width, moto_image_height
     else:
         xpix, ypix = image_width, image_height
 
-    pic = []
-    for i in range(ypix):
-        row = []
-        for j in range(xpix):
-            noise_val = random.random() * noise1([i/xpix, j/ypix])
-            noise_val += random.random() * noise2([i/xpix, j/ypix])
-            noise_val += random.random() * noise3([i/xpix, j/ypix])
-            noise_val += random.random() * noise4([i/xpix, j/ypix])
-
-            row.append(noise_val)
-        pic.append(row)
-
-    noise_img = np.array(pic) * 255
+    # Cut a random window from the noise image of dimensions (xpix, ypix)
+    x = random.randint(0, 1000 - xpix)
+    y = random.randint(0, 1000 - ypix)
+    noise_img = noise[y:int(y+ypix), x:int(x+xpix)]
     noise_img = noise_img.astype('int8')
 
     # Generate a random plate number if necessary
@@ -189,7 +196,7 @@ def create_noisy_plates(plate:str=None, moto:bool=False) -> None:
         plate = generate_plate_number(moto)
 
     # Check if the plate has been already generated
-    while (check_plate_number(plate)):
+    while (check_plate_number(plate, moto=moto)):
         plate = generate_plate_number(moto)
 
     # Create the image
@@ -208,18 +215,20 @@ def create_noisy_plates(plate:str=None, moto:bool=False) -> None:
     img.close()
 
     # Save the plate into a text file
-    with open(output_path + 'generated.txt', 'a+') as f:
+    with open(output_path + 'generated{}.txt'.format('-m' if moto else ''), 'a+') as f:
         f.write(plate + '\n')
     return
 
 # Driver function
-def main(nplates:int, gray:bool, perc:int, moto:bool=False) -> None:
+def main(nplates:int, gray:bool, perc:int, moto:bool=False, new_noise:int=1000) -> None:
     # Create the output directory if necessary
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    # Create the file "generated.txt" if not exists
+    # Create the files "generated.txt" and "generated-m.txt" if not existing
     f = open(output_path + 'generated.txt', 'a+')
+    f.close()
+    f = open(output_path + 'generated-m.txt', 'a+')
     f.close()
 
     
@@ -228,17 +237,20 @@ def main(nplates:int, gray:bool, perc:int, moto:bool=False) -> None:
     if nplates - noisy:
         print(TEXT_GREEN 
             + '>> Generating {} plates in {} (CLEAR) ({})'.format(nplates - noisy,
-            'GRAY' if gray == True else 'COLOR', 'MOTO' if moto else 'AUTO')
+            'GRAY' if gray == True else 'COLOR', 'MOTO' if moto else 'CAR')
             + TEXT_RESET)
         for _ in tqdm(range(nplates - noisy)):
             create_plate(gray=gray, moto=moto)
     
     if noisy:
         print(TEXT_GREEN 
-            + '>> Generating {} plates in GRAY (NOISY) ({})'.format(noisy, 'MOTO' if moto else 'AUTO')
+            + '>> Generating {} plates in GRAY (NOISY) ({})'.format(noisy, 'MOTO' if moto else 'CAR')
             + TEXT_RESET)
-        for _ in tqdm(range(noisy)):
-            create_noisy_plates(moto=moto)
+        for i in tqdm(range(noisy)):
+            # Every "new_noise" iterations regenerate the noise image
+            if i % new_noise == 0:
+                noise = generate_noise_image()
+            create_noisy_plate(moto=moto, noise=noise)
 
     return
 
@@ -298,9 +310,15 @@ def driver_main():
             perc = input('Enter the percentage of noisy images to generate [Enter = \"50%\"]: ')
             if perc == '':
                 perc = 50
+            perc = int(perc)
 
-            main(nplates=int(nplates * ratio/100), gray=True, perc=int(perc), moto=False)
-            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=int(perc), moto=True)
+            new_noise = input('Regenerate the noise image every [Enter = \"1000\"] plates: ')
+            if new_noise == '':
+                new_noise = 1000
+            new_noise = int(new_noise)            
+
+            main(nplates=int(nplates * ratio/100), gray=True, perc=perc, moto=False)
+            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=perc, moto=True)
 
         # Generate normal images only
         elif choice == '2':
@@ -318,6 +336,11 @@ def driver_main():
             if nplates == '':
                 nplates = 1000
             nplates = int(nplates)
+
+            new_noise = input('Regenerate the noise image every [Enter = \"1000\"] plates: ')
+            if new_noise == '':
+                new_noise = 1000
+            new_noise = int(new_noise)
 
             main(nplates=int(nplates * ratio/100), gray=True, perc=100, moto=False)
             main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=100, moto=True)
