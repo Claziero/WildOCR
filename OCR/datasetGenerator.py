@@ -1,4 +1,19 @@
-# Generate a new dataset file starting from "License Plate Generator" output images
+"""
+Generate a new dataset file starting from "License Plate Generator" output images
+The dataset is generated in .csv format
+
+For every image in the path, the dataset is generated with the following format:
+    - The image is converted to a list of ints (gray pixel values)
+        - CAR images have shape (200, 44) = 8800 pixels
+        - MOTORCYCLE images have shape (106, 83) = 8798 pixels
+          => generating the dataset, last 2 ints of a MOTO image will be 0
+    - The image name is added to the dataset
+    - The image name is converted to a list of ints
+        - (22 letters + 10 numbers) x 7 positions 
+          + 1 for discriminating plate types (0 = CAR, 1 = MOTO) = 225 ints
+        - letters 'I', 'O', 'Q', 'U' are not allowed
+"""
+
 import os
 import numpy as np
 import pandas as pd
@@ -10,33 +25,39 @@ TEXT_RESET = '\033[0m'
 TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
 
-# Function to convert a number plate string in 134 ints
+# Function to calculate the gap of the characters
+def calculate_gap(c:str) -> int:
+    # Numbers
+    if ord(c) <= 57:
+        return -39
+
+    # Letters
+    gap = 0
+    if ord(c) > ord('I'):
+        gap += 1
+    if ord(c) > ord('O'):
+        gap += 1
+    if ord(c) > ord('Q'):
+        gap += 1
+    if ord(c) > ord('U'):
+        gap += 1
+    return gap
+
+# Function to convert a number plate string in 225 ints
 def convert_to_ints(string:str) -> list[int]:
-    # Convert the string to a list of ints
+    # Convert the "string" to a list of ints
     ints = []
 
-    letter = [0] * 26
-    letter[ord(string[0]) - 65] = 1
-    ints.extend(letter)
-    letter = [0] * 26
-    letter[ord(string[1]) - 65] = 1
-    ints.extend(letter)
-    number = [0] * 10
-    number[ord(string[2]) - 48] = 1
-    ints.extend(number)
-    number = [0] * 10
-    number[ord(string[3]) - 48] = 1
-    ints.extend(number)
-    number = [0] * 10
-    number[ord(string[4]) - 48] = 1
-    ints.extend(number)
-    letter = [0] * 26
-    letter[ord(string[5]) - 65] = 1
-    ints.extend(letter)
-    letter = [0] * 26
-    letter[ord(string[6]) - 65] = 1
-    ints.extend(letter)
+    for i in range(7):
+        char = [0] * 32
+        char[ord(string[i]) - 65 - calculate_gap(string[i])] = 1
+        ints.extend(char)
 
+    # Add the last int for discriminating plate types
+    if string[7] == 'm': # MOTO
+        ints.append(1)
+    else:
+        ints.append(0)
     return ints
 
 # Function to generate the dataset in .csv format
@@ -51,11 +72,14 @@ def generate_dataset_csv(path:str, filename:str) -> None:
         if elem.endswith('.png'):
             img = Image.open(path + elem)
             img = np.array(img)
+            if elem.endswith('m.png'):
+                img = np.append(img, [0, 0])
             img = img.flatten()
             img = img.tolist()
+            img = str(img)[1:-1].replace(' ', '').strip()
             dataset.write(str(img)[1:-1] + ',' 
                 + elem[:-4] + ','
-                + str(convert_to_ints(elem[:-4]))[1:-1] + '\n')
+                + str(convert_to_ints(elem[:-3]))[1:-1] + '\n')
     
     # Close the dataset file
     dataset.close()

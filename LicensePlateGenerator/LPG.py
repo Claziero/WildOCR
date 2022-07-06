@@ -172,10 +172,6 @@ def generate_noise_image(width:int=1000, height:int=1000) -> np.ndarray:
             row.append(noise_val)
         pic.append(row)
 
-    # Plot the noise image
-    # plt.imshow(pic, cmap='gray')
-    # plt.show()
-
     return np.array(pic) * 255
 
 # Function to create plates with random noise (gray only)
