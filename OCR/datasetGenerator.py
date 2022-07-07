@@ -54,7 +54,7 @@ def convert_to_ints(string:str) -> list[int]:
         ints.extend(char)
 
     # Add the last int for discriminating plate types
-    if string[7] == 'm': # MOTO
+    if len(string) == 8 and string[7] == 'm': # MOTO
         ints.append(1)
     else:
         ints.append(0)
@@ -77,7 +77,7 @@ def generate_dataset_csv(path:str, filename:str) -> None:
             img = img.flatten()
             img = img.tolist()
             img = str(img)[1:-1].replace(' ', '').strip()
-            dataset.write(str(img)[1:-1] + ',' 
+            dataset.write(img + ',' 
                 + elem[:-4] + ','
                 + str(convert_to_ints(elem[:-3]))[1:-1] + '\n')
     
