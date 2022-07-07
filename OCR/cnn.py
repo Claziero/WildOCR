@@ -36,8 +36,13 @@ class ConvNet(nn.Module):
         self.gpu:torch.device = None
         self.cpu:torch.device = None
 
+        # Define the criterion for loss computation
+        self.criterion = nn.CrossEntropyLoss()
+
         # Array containing the loss function values
-        self.loss_array = []
+        self.train_loss_array = []
+        self.valid_loss_array = []
+        self.valid_accuracy_array = []
 
         # Initial image size: <w:200, h:44, c:1>
         # Convolutional layer 1: <w:200, h:44, c:1> -> <w:99, h:21, c:6>
@@ -75,10 +80,9 @@ class ConvNet(nn.Module):
         return out
 
     # Function to train the network
-    def train_net(self, X_train:torch.Tensor, Y_train:torch.Tensor, epochs:int, learning_rate:float) -> None:
-        # Define Loss function and optimizer
+    def train_net(self, X_train:torch.Tensor, Y_train:torch.Tensor, epochs:int, learning_rate:float, X_valid:torch.Tensor, Y_valid:torch.Tensor) -> None:
+        # Define optimizer
         self.train()
-        criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.SGD(self.parameters(), lr=learning_rate, momentum=0.9)
 
         # Train the network
@@ -89,7 +93,7 @@ class ConvNet(nn.Module):
                 # Forward pass
                 output = self.forward(data).to(self.gpu)
                 # Calculate the loss
-                loss = criterion(output[0], torch.from_numpy(Y_train.values[i]).float().to(self.gpu))
+                loss = self.criterion(output[0], torch.from_numpy(Y_train.values[i]).float().to(self.gpu))
                 # Backward and optimize
                 optimizer.zero_grad()
                 loss.backward()
@@ -98,11 +102,42 @@ class ConvNet(nn.Module):
                 if (i+1) % 1000 == 0:
                     print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
                         .format(epoch+1, epochs, i+1, len(X_train), loss.item()))
-                    # Save the loss function values for every epoch
-                    self.loss_array.append(loss.item())
+                    # Save the train loss function values every 1000 iterations
+                    self.train_loss_array.append(loss.item())
                 
+            # For each epoch validate the network
+            self.validate_net(X_valid, Y_valid)
+
         print('Finished Training')
         self.show_loss()
+        return
+
+    # Function to validate the network
+    def validate_net(self, X_valid:torch.Tensor, Y_valid:torch.Tensor) -> None:
+        # Validate the network
+        self.eval()
+        with torch.no_grad():
+            correct = loss = 0
+            for i, data in enumerate(X_valid.values):
+                # Convert the data to torch tensor
+                data = torch.from_numpy(data.reshape(1, 1, 44, 200)).float().to(self.gpu)
+                # Forward pass
+                output = self.forward(data).to(self.gpu)
+                # Calculate the loss
+                l = self.criterion(output[0], torch.from_numpy(Y_valid.values[i]).float().to(self.gpu))
+                loss += l.item()
+                # Calculate the accuracy
+                output = output.to(self.cpu)
+                correct += self.check_results(output[0], Y_valid.values[i])
+
+            # Calculate the average loss and accuracy
+            loss /= len(X_valid)
+            self.valid_loss_array.append(loss)
+
+            accuracy = 100 * correct / (8 * len(X_valid))
+            self.valid_accuracy_array.append(accuracy)
+
+        print(TEXT_BLUE + 'Accuracy of the network on the validation set: {:.2f}%'.format(accuracy) + TEXT_RESET)
         return
 
     # Function to test the network
@@ -242,10 +277,27 @@ class ConvNet(nn.Module):
 
     # Function to show the loss function
     def show_loss(self) -> None:
-        # Plot the loss function
-        plt.plot(self.loss_array)
+        # Plot the train loss function
+        plot = plt.figure(figsize=(5, 3), constrained_layout=True)
+        plot.add_subplot(1, 3, 1)
+        plt.plot(self.train_loss_array)
         plt.title('Training Loss')
         plt.xlabel('Iteration')
         plt.ylabel('Loss')
+
+        # Plot the validation loss function
+        plot.add_subplot(1, 3, 2)
+        plt.plot(self.valid_loss_array)
+        plt.title('Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+
+        # Plot the validation accuracy function
+        plot.add_subplot(1, 3, 3)
+        plt.plot(self.valid_accuracy_array)
+        plt.title('Validation Accuracy')
+        plt.xlabel('Epoch')
+        plt.ylabel('Accuracy')
+
         plt.show()
         return

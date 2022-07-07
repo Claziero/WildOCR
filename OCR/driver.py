@@ -29,6 +29,8 @@ class Driver:
         self.Y_train:pd.DataFrame = None
         self.X_test:pd.DataFrame = None
         self.Y_test:pd.DataFrame = None
+        self.X_valid:pd.DataFrame = None
+        self.Y_valid:pd.DataFrame = None
 
         self.net:ConvNet = ConvNet().to(gpu)
         self.net.gpu = gpu
@@ -39,22 +41,6 @@ class Driver:
         self.save_preds:bool = False
         self.save_preds_path:str = None
         self.model_loaded:bool = False
-        return
-
-    # Function to load the dataset (full) (not-used)
-    def load_dataset(self, filename:str) -> None:
-        # Load the dataset
-        print(TEXT_GREEN + '>> Loading dataset ...' + TEXT_RESET)
-        data = pd.read_csv(filename, header=None)
-
-        # Split and normalize the dataset
-        X = data.iloc[:, :8800] / 255
-        Y = data.iloc[:, 8801:]
-        
-        # Split the dataset into training and testing
-        self.X_train, self.X_test, self.Y_train, self.Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
-        
-        print(TEXT_GREEN + '>> Dataset loaded.' + TEXT_RESET)
         return
 
     # Function to load the train dataset
@@ -83,6 +69,19 @@ class Driver:
         print(TEXT_GREEN + '>> Test dataset loaded.' + TEXT_RESET)
         return
 
+    # Function to load the validation dataset
+    def load_valid(self, filename:str) -> None:
+        # Load the dataset
+        print(TEXT_GREEN + '>> Loading validation dataset ...' + TEXT_RESET)
+        data = pd.read_csv(filename, header=None)
+
+        # Split and normalize the dataset
+        self.X_valid = data.iloc[:, :8800] / 255
+        self.Y_valid = data.iloc[:, 8801:]
+        
+        print(TEXT_GREEN + '>> Validation dataset loaded.' + TEXT_RESET)
+        return
+
     # Function to load the model
     def load_model(self, filename:str) -> None:
         # Load the model
@@ -105,7 +104,7 @@ class Driver:
             + TEXT_RESET)
 
         start_time = time.time()
-        self.net.train_net(self.X_train, self.Y_train, epochs, learning_rate)
+        self.net.train_net(self.X_train, self.Y_train, epochs, learning_rate, self.X_valid, self.Y_valid)
         self.model_loaded = True
         end_time = time.time()
         elapsed = end_time - start_time
@@ -166,6 +165,7 @@ def driver_main():
             print('  1. Load entire dataset (train + test).')
             print('  2. Load train dataset only.')
             print('  3. Load test dataset only.')
+            print('  4. Load validation dataset only.')
             print('  0. Back.')
             choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
@@ -186,6 +186,11 @@ def driver_main():
                     test = 'dataset_test.csv'
                 d.load_test(test)
 
+                valid = input('Enter the filename for validation dataset [Enter = \"dataset_valid.csv\"]: ')
+                if valid == '':
+                    valid = 'dataset_valid.csv'
+                d.load_valid(valid)
+
             # Load train dataset only
             elif choice == '2':
                 filename = input('Enter the filename [Enter = \"dataset_train.csv\"]: ')
@@ -200,6 +205,13 @@ def driver_main():
                     filename = 'dataset_test.csv'
                 d.load_test(filename)
 
+            # Load validation dataset only
+            elif choice == '4':
+                filename = input('Enter the filename [Enter = \"dataset_valid.csv\"]: ')
+                if filename == '':
+                    filename = 'dataset_valid.csv'
+                d.load_valid(filename)
+
             # Invalid choice
             else:
                 print(TEXT_RED + '>> Invalid choice.' + TEXT_RESET)
@@ -213,6 +225,13 @@ def driver_main():
                 if dataset_path == '':
                     dataset_path = 'dataset_train.csv'
                 d.load_train(dataset_path)
+
+            if d.X_valid is None:
+                print(TEXT_RED + '>> Validation dataset not loaded.' + TEXT_RESET)
+                dataset_path = input('Enter the path to the validation dataset [Enter = \"dataset_valid.csv\"]: ')
+                if dataset_path == '':
+                    dataset_path = 'dataset_valid.csv'
+                d.load_valid(dataset_path)
 
             save = input('Enter the path to save the trained model [Enter = \"model.pkl\" | \"n\" = None]: ')
             if save == '':
