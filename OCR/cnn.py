@@ -3,10 +3,13 @@
   for Italian Number Plates recognition.
 
   > Input image is a grayscale image of a number plate
-    of size <w:200, h:44, c:1>
+    of size <w:200, h:44, c:1> (CAR images) or <w:106, h:83, c:1> (MOTORCYCLE images)
 
   > Output is a vector of length 225, where each element is a probability of the
     corresponding digit to be a certain letter/number.
+    Every character is an array of 32 ints identifiing the specific character
+    There are 7 characters in total, hence 32 * 7 = 224
+    The last element discriminates the plate type (0 = CAR, 1 = MOTORCYCLE)
 
   > The network consists of a series of convolutional layers, followed by a
     series of fully connected layer.
@@ -32,6 +35,9 @@ class ConvNet(nn.Module):
         super(ConvNet, self).__init__()
         self.gpu:torch.device = None
         self.cpu:torch.device = None
+
+        # Array containing the loss function values
+        self.loss_array = []
 
         # Initial image size: <w:200, h:44, c:1>
         # Convolutional layer 1: <w:200, h:44, c:1> -> <w:99, h:21, c:6>
@@ -89,11 +95,14 @@ class ConvNet(nn.Module):
                 loss.backward()
                 optimizer.step()
 
-                if (i+1) % 100 == 0:
+                if (i+1) % 1000 == 0:
                     print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
                         .format(epoch+1, epochs, i+1, len(X_train), loss.item()))
+                    # Save the loss function values for every epoch
+                    self.loss_array.append(loss.item())
                 
         print('Finished Training')
+        self.show_loss()
         return
 
     # Function to test the network
@@ -203,7 +212,6 @@ class ConvNet(nn.Module):
         # Convert the lines to a dataframe
         lines = StringIO(lines)
         lines = pd.read_csv(lines, header=None)
-        lines = lines.iloc[:num]
 
         # Get the images and predictions
         img = lines.iloc[:, :-2]
@@ -215,11 +223,11 @@ class ConvNet(nn.Module):
         fig = plt.figure(figsize=(rows, rows / 2), constrained_layout=True)
         for i in range(num):
             # Get the image, prediction and test string
-            # If the expected value of the string ends with a letter, than is a CAR plate
-            if Y_test.iloc[i][-1].isalpha():
-                img_array = np.array(img.iloc[i]).reshape(44, 200)
+            # If the expected value of the string ends with 'm', than is a MOTO plate
+            if Y_test.iloc[i][-1] == 'm':
+                img_array = np.array(img.iloc[i, :-2]).reshape(83, 106)
             else:
-                img_array = np.array(img.iloc[i]).reshape(83, 106)
+                img_array = np.array(img.iloc[i]).reshape(44, 200)
             
             prediction = Y_pred.iloc[i]
             
@@ -229,5 +237,15 @@ class ConvNet(nn.Module):
             plt.axis('off')
             plt.title(prediction)
 
+        plt.show()
+        return
+
+    # Function to show the loss function
+    def show_loss(self) -> None:
+        # Plot the loss function
+        plt.plot(self.loss_array)
+        plt.title('Training Loss')
+        plt.xlabel('Iteration')
+        plt.ylabel('Loss')
         plt.show()
         return

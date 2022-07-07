@@ -22,6 +22,7 @@ class Driver:
             gpu = torch.device("cuda:0")
             cpu = torch.device("cpu")
         else:
+            print(TEXT_RED + '>> CUDA is not available.' + TEXT_RESET)
             gpu = cpu = torch.device("cpu")
 
         self.X_train:pd.DataFrame = None
@@ -107,9 +108,10 @@ class Driver:
         self.net.train_net(self.X_train, self.Y_train, epochs, learning_rate)
         self.model_loaded = True
         end_time = time.time()
+        elapsed = end_time - start_time
 
         print(TEXT_GREEN 
-            + '>> Training finished in {:.2f} seconds.'.format(end_time - start_time) 
+            + '>> Training finished in {:.0f} mins {:.2f} secs.'.format(elapsed / 60, elapsed % 60) 
             + TEXT_RESET)
 
         # Save the trained network model if required
@@ -128,9 +130,10 @@ class Driver:
         start_time = time.time()
         self.net.test_net(self.X_test, self.Y_test, self.save_preds_path)
         end_time = time.time()
+        elapsed = end_time - start_time
 
         print(TEXT_GREEN 
-            + '>> Testing finished in {:.2f} seconds.'.format(end_time - start_time) 
+            + '>> Testing finished in {:.0f} mins {:.2f} secs.'.format(elapsed / 60, elapsed % 60) 
             + TEXT_RESET)
         return
 
