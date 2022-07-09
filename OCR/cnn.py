@@ -80,7 +80,7 @@ class ConvNet(nn.Module):
         return out
 
     # Function to train the network
-    def train_net(self, X_train:torch.Tensor, Y_train:torch.Tensor, epochs:int, learning_rate:float, X_valid:torch.Tensor, Y_valid:torch.Tensor) -> None:
+    def train_net(self, X_train:pd.DataFrame, Y_train:pd.DataFrame, epochs:int, learning_rate:float, X_valid:pd.DataFrame, Y_valid:pd.DataFrame) -> None:
         # Define optimizer
         self.train()
         optimizer = torch.optim.SGD(self.parameters(), lr=learning_rate, momentum=0.9)
@@ -113,7 +113,7 @@ class ConvNet(nn.Module):
         return
 
     # Function to validate the network
-    def validate_net(self, X_valid:torch.Tensor, Y_valid:torch.Tensor) -> None:
+    def validate_net(self, X_valid:pd.DataFrame, Y_valid:pd.DataFrame) -> None:
         # Validate the network
         self.eval()
         with torch.no_grad():
@@ -141,7 +141,7 @@ class ConvNet(nn.Module):
         return
 
     # Function to test the network
-    def test_net(self, X_test:torch.Tensor, Y_test:torch.Tensor, save_preds:str=None) -> None:
+    def test_net(self, X_test:pd.DataFrame, Y_test:pd.DataFrame, save_preds:str=None) -> None:
         # Test the network
         self.eval()
         with torch.no_grad():
@@ -278,7 +278,7 @@ class ConvNet(nn.Module):
     # Function to show the loss function
     def show_loss(self) -> None:
         # Plot the train loss function
-        plot = plt.figure(figsize=(5, 3), constrained_layout=True)
+        plot = plt.figure(figsize=(10, 5), constrained_layout=True)
         plot.add_subplot(1, 3, 1)
         plt.plot(self.train_loss_array)
         plt.title('Training Loss')
@@ -299,5 +299,6 @@ class ConvNet(nn.Module):
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy')
 
+        plt.savefig('graphs.png')
         plt.show()
         return

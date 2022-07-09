@@ -85,7 +85,7 @@ def generate_dataset_csv(path:str, filename:str) -> None:
             img = str(img)[1:-1].replace(' ', '').strip()
             dataset.write(img + ',' 
                 + elem[:-4] + ','
-                + str(convert_to_ints(elem[:-3]))[1:-1] + '\n')
+                + str(convert_to_ints(elem[:-4]))[1:-1] + '\n')
     
     # Close the dataset file
     dataset.close()
