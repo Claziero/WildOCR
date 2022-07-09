@@ -19,6 +19,7 @@ import torch
 import numpy as np
 import pandas as pd
 import torch.nn as nn
+from PIL import Image
 from io import StringIO
 from math import ceil, sqrt
 import matplotlib.pyplot as plt
@@ -260,7 +261,7 @@ class ConvNet(nn.Module):
             # Get the image, prediction and test string
             # If the expected value of the string ends with 'm', than is a MOTO plate
             if Y_test.iloc[i][-1] == 'm':
-                img_array = np.array(img.iloc[i, :-2]).reshape(83, 106)
+                img_array = self.reverse_moto(img.iloc[i])
             else:
                 img_array = np.array(img.iloc[i]).reshape(44, 200)
             
@@ -302,3 +303,61 @@ class ConvNet(nn.Module):
         plt.savefig('graphs.png')
         plt.show()
         return
+
+    # Function to preprocess the MOTO plate before entering the network
+    def preprocess_moto(self, X:pd.Series) -> np.ndarray:
+        """
+            The MOTO image is (originally) of size <w:106, h:83>.
+            The MOTO image is resized to <w:200, h:44> to be used in the network.
+            The image will be cut in half horizontally to get 2 images 
+            of size <106, 42> and <106, 41>, then both images will be scaled to <100, 44>
+            and the two images will be concatenated to get the final image of size <200, 44>.
+        """
+
+        # Open the image from the array
+        img = Image.fromarray(X[:-2].values.reshape(83, 106))
+
+        # Cut the image
+        img_1 = img.crop((0, 0, 106, 42))
+        img_2 = img.crop((0, 42, 106, 83))
+
+        # Resize the images
+        img_1 = img_1.resize((100, 44), Image.ANTIALIAS)
+        img_2 = img_2.resize((100, 44), Image.ANTIALIAS)
+
+        # Concatenate the images
+        img_1 = np.array(img_1)
+        img_2 = np.array(img_2)
+        img = np.concatenate((img_1, img_2), axis=1)
+        
+        # Return the image
+        return img
+
+    # Function to reverse the MOTO plate preprocessing (to be shown as the original image)
+    def reverse_moto(self, X:np.ndarray) -> np.ndarray:
+        """
+            The MOTO image is (now) of size <w:200, h:44>.
+            The MOTO image is resized to <w:106, h:83> to be shown as the original image.
+            The image will be cut in half horizontally to get 2 images 
+            of size <100, 44> each, then the images will be scaled to <106, 42> and <106, 41>
+            and the two images will be concatenated vertically to get the final image of size <106, 83>.
+        """
+
+        # Open the image from the array
+        img = Image.fromarray(X)
+
+        # Cut the image
+        img_1 = img.crop((0, 0, 100, 44))
+        img_2 = img.crop((100, 0, 200, 44))
+
+        # Resize the images
+        img_1 = img_1.resize((106, 42), Image.ANTIALIAS)
+        img_2 = img_2.resize((106, 41), Image.ANTIALIAS)
+
+        # Concatenate the images
+        img_1 = np.array(img_1)
+        img_2 = np.array(img_2)
+        img = np.concatenate((img_1, img_2), axis=0)
+        
+        # Return the image
+        return img

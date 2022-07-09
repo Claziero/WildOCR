@@ -79,7 +79,7 @@ def generate_dataset_csv(path:str, filename:str) -> None:
             img = Image.open(path + elem)
             img = np.array(img)
             if elem.endswith('m.png'):
-                img = np.append(img, [0, 0])
+                img = preprocess_moto(img)
             img = img.flatten()
             img = img.tolist()
             img = str(img)[1:-1].replace(' ', '').strip()
@@ -113,6 +113,35 @@ def split_dataset(path:str, train:str, test:str, valid:str, perc_train:int=80, p
     valid_d.close()
     test_d.close()
     return
+
+# Function to preprocess the MOTO plate before being written in the dataset
+def preprocess_moto(X:np.ndarray) -> np.ndarray:
+    """
+        The MOTO image is (originally) of size <w:106, h:83>.
+        The MOTO image is resized to <w:200, h:44> to be used in the network.
+        The image will be cut in half horizontally to get 2 images 
+        of size <106, 42> and <106, 41>, then both images will be scaled to <100, 44>
+        and the two images will be concatenated to get the final image of size <200, 44>.
+    """
+
+    # Open the image from the array
+    img = Image.fromarray(X.reshape(83, 106))
+
+    # Cut the image
+    img_1 = img.crop((0, 0, 106, 42))
+    img_2 = img.crop((0, 42, 106, 83))
+
+    # Resize the images
+    img_1 = img_1.resize((100, 44), Image.ANTIALIAS)
+    img_2 = img_2.resize((100, 44), Image.ANTIALIAS)
+
+    # Concatenate the images
+    img_1 = np.array(img_1)
+    img_2 = np.array(img_2)
+    img = np.concatenate((img_1, img_2), axis=1)
+    
+    # Return the image array
+    return img
     
 
 # Main function
@@ -167,7 +196,7 @@ def driver_main():
             
             print(TEXT_GREEN 
                 + '>> Splitting dataset from {} to {} ({}%), {} ({}%), {} ({}%) ...'.format(filename,
-                filename_train, perc_train, filename_valid, 100 - perc_train, filename_test, 100 - perc_train - perc_valid)
+                filename_train, perc_train, filename_valid, 100 - perc_train - perc_valid, filename_test, 100 - perc_train - perc_valid)
                 + TEXT_RESET)
             split_dataset(filename, filename_train, filename_test, filename_valid, perc_train, perc_valid)
             print(TEXT_GREEN + '>> Done.' + TEXT_RESET)
@@ -218,7 +247,7 @@ def driver_main():
 
             print(TEXT_GREEN 
                 + '>> Splitting dataset from {} to {} ({}%), {} ({}%), {} ({}%) ...'.format(filename,
-                filename_train, perc_train, filename_valid, 100 - perc_train, filename_test, 100 - perc_train - perc_valid)
+                filename_train, perc_train, filename_valid, 100 - perc_train - perc_valid, filename_test, 100 - perc_train - perc_valid)
                 + TEXT_RESET)
             split_dataset(filename, filename_train, filename_test, filename_valid, perc_train, perc_valid)
             print(TEXT_GREEN + '>> Done.' + TEXT_RESET)

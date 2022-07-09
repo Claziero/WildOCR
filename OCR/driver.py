@@ -3,7 +3,6 @@ import time
 import torch
 import pandas as pd
 from cnn import ConvNet
-from sklearn.model_selection import train_test_split
 
 # Define colors
 TEXT_RESET = '\033[0m'
