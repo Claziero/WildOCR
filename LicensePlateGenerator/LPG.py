@@ -33,8 +33,8 @@ moto_middle_point = (8, 47)
 moto_stroke_width = 0
 
 # Paths
-empty_plate_path = 'assets/plates/empty-plate-small.png'
-moto_empty_plate_path = 'assets/plates/empty-plate-small-moto.png'
+empty_plate_path = 'assets/plates/empty-plate.png'
+moto_empty_plate_path = 'assets/plates/empty-plate-moto.png'
 font_path = 'assets/plates/plates1999.ttf'
 output_path = 'output/'
 
