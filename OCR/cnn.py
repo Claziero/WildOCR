@@ -45,30 +45,39 @@ class ConvNet(nn.Module):
         self.valid_loss_array = []
         self.valid_accuracy_array = []
 
+        # Network parameters
+        self.l1_out_ch = 5
+        self.l2_out_ch = 10
+        self.fc1_in_dim = self.l2_out_ch * 9 * 48
+        self.fc1_out_dim = self.fc1_in_dim // 2
+        self.fc2_out_dim = self.fc1_out_dim // 2
+        self.fc3_out_dim = self.fc2_out_dim // 2
+        self.fc4_out_dim = 32 * 7 + 1
+
         # Initial image size: <w:200, h:44, c:1>
-        # Convolutional layer 1: <w:200, h:44, c:1> -> <w:99, h:21, c:6>
+        # Convolutional layer 1: <w:200, h:44, c:1> -> <w:99, h:21>
         self.layer1 = torch.nn.Sequential(
-            torch.nn.Conv2d(1, 6, kernel_size = 3),
+            torch.nn.Conv2d(1, self.l1_out_ch, kernel_size = 3),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size = 2, stride = 2)
         )
 
-        # Convolutional layer 2: <w:99, h:21, c:6> -> <w:48, h:9, c:16>
+        # Convolutional layer 2: <w:99, h:21> -> <w:48, h:9>
         self.layer2 = torch.nn.Sequential(
-            torch.nn.Conv2d(6, 16, kernel_size = 3),
+            torch.nn.Conv2d(self.l1_out_ch, self.l2_out_ch, kernel_size = 3),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size = 2, stride = 2)
         )
 
-        # Fully connected layer: <w:48, h:9, c:16> -> (32 * 7) + 1 = 225 neurons
+        # Fully connected layer: output size = (32 * 7) + 1 = 225 neurons
         self.fc = torch.nn.Sequential(
-            torch.nn.Linear(16 * 9 * 48, 16 * 9 * 24),
+            torch.nn.Linear(self.fc1_in_dim, self.fc1_out_dim),
             torch.nn.ReLU(),
-            torch.nn.Linear(16 * 9 * 24, 16 * 9 * 12),
+            torch.nn.Linear(self.fc1_out_dim, self.fc2_out_dim),
             torch.nn.ReLU(),
-            torch.nn.Linear(16 * 9 * 12, 72 * 12),
+            torch.nn.Linear(self.fc2_out_dim, self.fc3_out_dim),
             torch.nn.ReLU(),
-            torch.nn.Linear(72 * 12, 32 * 7 + 1)
+            torch.nn.Linear(self.fc3_out_dim, self.fc4_out_dim)
         )
         return
 
@@ -76,7 +85,7 @@ class ConvNet(nn.Module):
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         out = self.layer1(x)
         out = self.layer2(out)
-        out = out.view(-1, 16 * 9 * 48)
+        out = out.view(-1, self.fc1_in_dim)
         out = self.fc(out)
         return out
 
@@ -301,7 +310,6 @@ class ConvNet(nn.Module):
         plt.ylabel('Accuracy')
 
         plt.savefig('graphs.png')
-        plt.show()
         return
 
     # Function to preprocess the MOTO plate before entering the network
