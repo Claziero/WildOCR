@@ -6,7 +6,6 @@ from tqdm import tqdm
 from math import floor
 from perlin_noise import PerlinNoise
 from PIL import Image, ImageDraw, ImageFont
-from matplotlib import pyplot as plt
 
 # Define colors
 TEXT_RESET = '\033[0m'
@@ -33,7 +32,7 @@ moto_middle_point = (8, 47)
 moto_stroke_width = 0
 
 # Paths
-empty_plate_path = 'assets/plates/empty-plate.png'
+car_empty_plate_path = 'assets/plates/empty-plate.png'
 moto_empty_plate_path = 'assets/plates/empty-plate-moto.png'
 font_path = 'assets/plates/plates1999.ttf'
 output_path = 'output/'
@@ -62,7 +61,7 @@ def generate_plate_number(moto:bool=False) -> str:
 def generate_plate(plate:str, moto:bool=False) -> Image:
     if not moto:
         # Open base image
-        img = Image.open(empty_plate_path)
+        img = Image.open(car_empty_plate_path)
         # Create a draw object
         draw = ImageDraw.Draw(img)
         # Create a font object
