@@ -12,82 +12,114 @@ TEXT_RESET = '\033[0m'
 TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
 
-# Constants (image size: <200, 44>)
-image_width = 200
-image_height = 44
-max_number_width = 65
-font_size = 40
-initial_point = (25, 8)
-middle_point = (77, 8)
-final_point = (137, 8)
-stroke_width = 0
+# Define plate types
+PLATE_TYPES = ['car', 'moto']
 
-# Constants for moto plates (image size: <106, 83>)
-moto_image_width = 106
-moto_image_height = 83
-moto_max_number_width = 90
+# Dimension constants
+# Car plates are 200x44 pixels
+car_image_width, car_image_height = 200, 44
+car_font_size = 40
+car_stroke_width = 0
+
+# Moto plates are 106x83 pixels
+moto_image_width, moto_image_height = 106, 83
 moto_font_size = 40
-moto_initial_point = (25, 8)
-moto_middle_point = (8, 47)
 moto_stroke_width = 0
 
+# Constants for car plates (image size: <200, 44>)
+car_max_number_width = 65
+car_initial_point = (25, 8)
+car_middle_point = (77, 8)
+car_final_point = (137, 8)
+
+# Constants for moto plates (image size: <106, 83>)
+moto_max_number_width = 90
+moto_initial_point = (25, 8)
+moto_middle_point = (8, 47)
+
 # Paths
-car_empty_plate_path = 'assets/plates/empty-plate.png'
+car_empty_plate_path = 'assets/plates/empty-plate-car.png'
 moto_empty_plate_path = 'assets/plates/empty-plate-moto.png'
+carabinieri_empty_plate_path = 'assets/plates/empty-plate-carabinieri.png'
+aeronautica_empty_plate_path = 'assets/plates/empty-plate-aeronautica-mil.png'
+esercito_empty_plate_path = 'assets/plates/empty-plate-esercito.png'
+marina_empty_plate_path = 'assets/plates/empty-plate-marina-mil.png'
+vigili_fuoco_empty_plate_path = 'assets/plates/empty-plate-vigili-fuoco.png'
+car_special_empty_plate_path = 'assets/plates/empty-plate-special-car.png'
+
 font_path = 'assets/plates/plates1999.ttf'
 output_path = 'output/'
 
+# Auxiliar function to get the -* suffix of plate names and generated files
+def get_suffix(ptype:str) -> str:
+    if ptype == 'car':
+        return '-car'
+    if ptype == 'moto':
+        return '-moto'
+    
+    return ''
+
+# Auxiliar function to get the format of the plate string
+def get_plate_format(ptype:str) -> list[int]:
+    if ptype == 'car':
+        return [2, 3, 2]
+    if ptype == 'moto':
+        return [2, 5, 0]
+    
+    return [0, 0, 0]
+
+
 # Function to generate a random number plate
-def generate_plate_number(moto:bool=False) -> str:
+def generate_plate_number(initial_letters:int, central_numbers:int, final_letters:int) -> str:
     # List of possible characters ('I', 'O', 'Q', 'U' are not allowed)
     letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'R', 'S', 'T', 'V', 'W', 'X', 'Y', 'Z']
     numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     plate = ""
 
     # Generate a random plate of 7 characters
-    for _ in range(2):
+    for _ in range(int(initial_letters)):
         plate += letters[int(random.random() * len(letters))]
-    for _ in range(3):
+    for _ in range(int(central_numbers)):
         plate += numbers[int(random.random() * len(numbers))]
-    for _ in range(2):
-        if moto:
-            plate += numbers[int(random.random() * len(numbers))]
-        else:
-            plate += letters[int(random.random() * len(letters))]
+    for _ in range(int(final_letters)):
+        plate += letters[int(random.random() * len(letters))]
     
     return plate
 
 # Function to create an image with the given plate
-def generate_plate(plate:str, moto:bool=False) -> Image:
-    if not moto:
+def generate_plate(plate:str, ptype:str) -> Image:
+    # Car plates
+    if ptype == 'car':
         # Open base image
         img = Image.open(car_empty_plate_path)
         # Create a draw object
         draw = ImageDraw.Draw(img)
         # Create a font object
-        font = ImageFont.truetype(font_path, font_size)
+        font = ImageFont.truetype(font_path, car_font_size)
 
         # Draw the plate (initial letters)
-        draw.text(initial_point, plate[:2], fill=(0, 0, 0), font=font, stroke_width=stroke_width)
+        draw.text(car_initial_point, plate[:2], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
         
         # Justify center text (central numbers)
-        spaces = max_number_width - draw.textlength(plate[2:5], font=font)
+        spaces = car_max_number_width - draw.textlength(plate[2:5], font=font)
         if spaces > 3:
             spaces = floor(spaces / 3)
-            draw.text(middle_point, plate[2], fill=(0, 0, 0), font=font, stroke_width=stroke_width)
+            draw.text(car_middle_point, plate[2], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
 
-            off1 = (draw.textlength(plate[2], font=font) + spaces + middle_point[0], middle_point[1])
-            draw.text(off1, plate[3], fill=(0, 0, 0), font=font, stroke_width=stroke_width)
+            off1 = (draw.textlength(plate[2], font=font) + spaces + car_middle_point[0], car_middle_point[1])
+            draw.text(off1, plate[3], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
 
-            off2 = (draw.textlength(plate[2:4], font=font) + 2 * spaces + middle_point[0], middle_point[1])
-            draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=stroke_width)
+            off2 = (draw.textlength(plate[2:4], font=font) + 2 * spaces + car_middle_point[0], car_middle_point[1])
+            draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
         else:
-            draw.text(middle_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=stroke_width)
+            draw.text(car_middle_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
         
         # Draw the plate (final letters)
-        draw.text(final_point, plate[5:], fill=(0, 0, 0), font=font, stroke_width=stroke_width)
+        draw.text(car_final_point, plate[5:], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
         return img
-    else:
+    
+    # Moto plates
+    elif ptype == 'moto':
         # Open base image
         img = Image.open(moto_empty_plate_path)
         # Create a draw object
@@ -120,9 +152,13 @@ def generate_plate(plate:str, moto:bool=False) -> Image:
         
         return img
 
+    # Incorrect plate type
+    else:
+        return None
+
 # Function to check if a plate has been already created
-def check_plate_number(plate:str, moto:bool) -> bool:
-    with open(output_path + 'generated{}.txt'.format('-m' if moto else ''), 'r') as f:
+def check_plate_number(plate:str, ptype:str) -> bool:
+    with open(output_path + 'generated{}.txt'.format(get_suffix(ptype)), 'r') as f:
         line = f.readline()
         while line != '':
             if plate in line:
@@ -131,28 +167,28 @@ def check_plate_number(plate:str, moto:bool) -> bool:
     return False
 
 # Function to create and save a plate
-def create_plate(plate:str=None, gray:bool=True, moto:bool=False) -> None:
-    # Generate a random plate number if necessary
-    if plate is None:
-        plate = generate_plate_number(moto)
+def create_plate(gray:bool=True, ptype:str='car') -> None:
+    # Generate a random plate number
+    seq = get_plate_format(ptype)
+    plate = generate_plate_number(seq[0], seq[1], seq[2])
 
     # Check if the plate has been already generated
-    while check_plate_number(plate, moto=moto):
-        plate = generate_plate_number(moto)
+    while check_plate_number(plate, ptype=ptype):
+        plate = generate_plate_number(seq[0], seq[1], seq[2])
 
     # Create the image
-    img = generate_plate(plate, moto)
+    img = generate_plate(plate, ptype)
 
     # Convert the image in grayscale if necessary
     if gray:
         img = img.convert('L')
 
     # Save and close the image
-    img.save(output_path + plate + '{}.png'.format('m' if moto else ''))
+    img.save(output_path + plate + '{}.png'.format(get_suffix(ptype)))
     img.close()
 
     # Save the plate into a text file
-    with open(output_path + 'generated{}.txt'.format('-m' if moto else ''), 'a+') as f:
+    with open(output_path + 'generated{}.txt'.format(get_suffix(ptype)), 'a+') as f:
         f.write(plate + '\n')
     return
 
@@ -174,11 +210,11 @@ def generate_noise_image(width:int=1000, height:int=1000) -> np.ndarray:
     return np.array(pic) * 255
 
 # Function to create plates with random noise (gray only)
-def create_noisy_plate(plate:str=None, moto:bool=False, noise:np.ndarray=None) -> None:
-    if moto:
+def create_noisy_plate(ptype:str='car', noise:np.ndarray=None) -> None:
+    if ptype == 'car':
+        xpix, ypix = car_image_width, car_image_height
+    elif ptype == 'moto':
         xpix, ypix = moto_image_width, moto_image_height
-    else:
-        xpix, ypix = image_width, image_height
 
     # Cut a random window from the noise image of dimensions (xpix, ypix)
     x = random.randint(0, 1000 - xpix)
@@ -186,16 +222,16 @@ def create_noisy_plate(plate:str=None, moto:bool=False, noise:np.ndarray=None) -
     noise_img = noise[y:int(y+ypix), x:int(x+xpix)]
     noise_img = noise_img.astype('int8')
 
-    # Generate a random plate number if necessary
-    if plate is None:
-        plate = generate_plate_number(moto)
+    # Generate a random plate number
+    seq = get_plate_format(ptype)
+    plate = generate_plate_number(seq[0], seq[1], seq[2])
 
     # Check if the plate has been already generated
-    while (check_plate_number(plate, moto=moto)):
-        plate = generate_plate_number(moto)
+    while (check_plate_number(plate, ptype)):
+        plate = generate_plate_number(seq[0], seq[1], seq[2])
 
     # Create the image
-    img = generate_plate(plate, moto)
+    img = generate_plate(plate, ptype)
 
     # Convert the image in grayscale
     img = img.convert('L')
@@ -206,46 +242,44 @@ def create_noisy_plate(plate:str=None, moto:bool=False, noise:np.ndarray=None) -
     noisy = noisy.convert('L')
 
     # Save and close the image
-    noisy.save(output_path + plate + '{}.png'.format('m' if moto else ''))
+    noisy.save(output_path + plate + '{}.png'.format(get_suffix(ptype)))
     img.close()
 
     # Save the plate into a text file
-    with open(output_path + 'generated{}.txt'.format('-m' if moto else ''), 'a+') as f:
+    with open(output_path + 'generated{}.txt'.format(get_suffix(ptype)), 'a+') as f:
         f.write(plate + '\n')
     return
 
 # Driver function
-def main(nplates:int, gray:bool, perc:int, moto:bool=False, new_noise:int=1000) -> None:
+def main(nplates:int, gray:bool, perc:int, ptype:str, new_noise:int=1000) -> None:
     # Create the output directory if necessary
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
     # Create the files "generated.txt" and "generated-m.txt" if not existing
-    f = open(output_path + 'generated.txt', 'a+')
-    f.close()
-    f = open(output_path + 'generated-m.txt', 'a+')
-    f.close()
+    for t in PLATE_TYPES:
+        f = open(output_path + 'generated{}.txt'.format(get_suffix(t)), 'a+')
+        f.close()
 
-    
     # Generate "nplates" random plates
     noisy = int(nplates * perc / 100)
     if nplates - noisy:
         print(TEXT_GREEN 
             + '>> Generating {} plates in {} (CLEAR) ({})'.format(nplates - noisy,
-            'GRAY' if gray == True else 'COLOR', 'MOTO' if moto else 'CAR')
+            'GRAY' if gray == True else 'COLOR', ptype)
             + TEXT_RESET)
         for _ in tqdm(range(nplates - noisy)):
-            create_plate(gray=gray, moto=moto)
+            create_plate(gray=gray, ptype=ptype)
     
     if noisy:
         print(TEXT_GREEN 
-            + '>> Generating {} plates in GRAY (NOISY) ({})'.format(noisy, 'MOTO' if moto else 'CAR')
+            + '>> Generating {} plates in GRAY (NOISY) ({})'.format(noisy, ptype)
             + TEXT_RESET)
         for i in tqdm(range(noisy)):
             # Every "new_noise" iterations regenerate the noise image
             if i % new_noise == 0:
                 noise = generate_noise_image()
-            create_noisy_plate(moto=moto, noise=noise)
+            create_noisy_plate(ptype=ptype, noise=noise)
 
     return
 
@@ -312,8 +346,8 @@ def driver_main():
                 new_noise = 1000
             new_noise = int(new_noise)            
 
-            main(nplates=int(nplates * ratio/100), gray=True, perc=perc, moto=False)
-            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=perc, moto=True)
+            main(nplates=int(nplates * ratio/100), gray=True, perc=perc, ptype='car')
+            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=perc, ptype='moto')
 
         # Generate normal images only
         elif choice == '2':
@@ -322,8 +356,8 @@ def driver_main():
                 nplates = 1000
             nplates = int(nplates)
 
-            main(nplates=int(nplates * ratio/100), gray=True, perc=0, moto=False)
-            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=0, moto=True)
+            main(nplates=int(nplates * ratio/100), gray=True, perc=0, ptype='car')
+            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=0, ptype='moto')
 
         # Generate noisy images only
         elif choice == '3':
@@ -337,8 +371,8 @@ def driver_main():
                 new_noise = 1000
             new_noise = int(new_noise)
 
-            main(nplates=int(nplates * ratio/100), gray=True, perc=100, moto=False)
-            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=100, moto=True)
+            main(nplates=int(nplates * ratio/100), gray=True, perc=100, ptype='car')
+            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=100, ptype='moto')
 
         # Generate coloured images
         elif choice == '4':
@@ -347,8 +381,8 @@ def driver_main():
                 nplates = 1000
             nplates = int(nplates)
 
-            main(nplates=int(nplates * ratio/100), gray=False, perc=0, moto=False)
-            main(nplates=int(nplates * (100-ratio)/100), gray=False, perc=0, moto=True)
+            main(nplates=int(nplates * ratio/100), gray=False, perc=0, ptype='car')
+            main(nplates=int(nplates * (100-ratio)/100), gray=False, perc=0, ptype='moto')
 
         # Exit
         elif choice == '0':
