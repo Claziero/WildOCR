@@ -13,7 +13,7 @@ TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
 
 # Define plate types
-PLATE_TYPES = ['auto', 'moto', 'aeronautica', 'carabinieri', 'esercito', 'marina', 'vigili_fuoco']
+PLATE_TYPES = ['auto', 'moto', 'aeronautica', 'carabinieri', 'esercito', 'marina', 'vigili_fuoco', 'auto_sp']
 
 # Dimension constants
 # Car plates are 200x44 pixels
@@ -48,6 +48,12 @@ vigili_fuoco_max_number_width = 115
 vigili_fuoco_middle_point = (77, 6)
 vigili_fuoco_font_size = 46
 
+# Constants for auto special plates (image size: <106, 83>)
+auto_sp_max_number_width = 46
+auto_sp_initial_point = (36, 8)
+auto_sp_middle_point = (5, 46)
+auto_sp_final_point = (65, 46)
+
 # Paths
 auto_empty_plate_path = 'assets/empty-plate-auto.png'
 moto_empty_plate_path = 'assets/empty-plate-moto.png'
@@ -56,7 +62,7 @@ aeronautica_empty_plate_path = 'assets/empty-plate-aeronautica-mil.png'
 esercito_empty_plate_path = 'assets/empty-plate-esercito.png'
 marina_empty_plate_path = 'assets/empty-plate-marina-mil.png'
 vigili_fuoco_empty_plate_path = 'assets/empty-plate-vigili-fuoco.png'
-car_special_empty_plate_path = 'assets/empty-plate-special-auto.png'
+auto_sp_empty_plate_path = 'assets/empty-plate-special-auto.png'
 
 font_path = 'assets/plates1999.ttf'
 output_path = 'output/'
@@ -77,12 +83,14 @@ def get_suffix(ptype:str) -> str:
         return '-mari'
     if ptype == 'vigili_fuoco':
         return '-vigf'
+    if ptype == 'auto_sp':
+        return '-ausp'
     
     return ''
 
 # Auxiliar function to get the format of the plate string
 def get_plate_format(ptype:str) -> list[int]:
-    if ptype == 'auto':
+    if ptype == 'auto' or ptype == 'auto_sp':
         return [2, 3, 2]
     if ptype == 'moto':
         return [2, 5, 0]
@@ -243,6 +251,36 @@ def generate_plate(plate:str, ptype:str) -> Image:
             draw.text(vigili_fuoco_middle_point, plate, fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         return img
 
+    # Auto speciale plates
+    elif ptype == 'auto_sp':
+        # Open base image
+        img = Image.open(auto_sp_empty_plate_path)
+        # Create a draw object
+        draw = ImageDraw.Draw(img)
+        # Create a font object
+        font = ImageFont.truetype(font_path, moto_font_size)
+
+        # Draw the plate (initial letters)
+        draw.text(auto_sp_initial_point, plate[:2], fill=(0, 0, 0), font=font, stroke_width=moto_stroke_width)
+        
+        # Justify center text (central numbers)
+        spaces = auto_sp_max_number_width - draw.textlength(plate[2:5], font=font)
+        if spaces > 3:
+            spaces = floor(spaces / 3)
+            draw.text(auto_sp_middle_point, plate[2], fill=(0, 0, 0), font=font, stroke_width=moto_stroke_width)
+
+            off1 = (draw.textlength(plate[2], font=font) + spaces + auto_sp_middle_point[0], auto_sp_middle_point[1])
+            draw.text(off1, plate[3], fill=(0, 0, 0), font=font, stroke_width=moto_stroke_width)
+
+            off2 = (draw.textlength(plate[2:4], font=font) + 2 * spaces + auto_sp_middle_point[0], auto_sp_middle_point[1])
+            draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=moto_stroke_width)
+        else:
+            draw.text(auto_sp_middle_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=moto_stroke_width)
+
+        # Draw the plate (final letters)
+        draw.text(auto_sp_final_point, plate[5:], fill=(0, 0, 0), font=font, stroke_width=moto_stroke_width)
+        return img
+
     # Incorrect plate type
     else:
         return None
@@ -302,8 +340,8 @@ def generate_noise_image(width:int=1000, height:int=1000) -> np.ndarray:
 
 # Function to create plates with random noise (gray only)
 def create_noisy_plate(ptype:str='auto', noise:np.ndarray=None) -> None:
-    # Moto plates have different shape
-    if ptype == 'moto':
+    # Moto/auto_sp plates have different shape
+    if ptype == 'moto' or ptype == 'auto_sp':
         xpix, ypix = moto_image_width, moto_image_height
     # Every other plate is basically a car plate
     else:
@@ -400,6 +438,7 @@ def driver_main():
         print('  6. Generate esercito plates only.')
         print('  7. Generate marina plates only.')
         print('  8. Generate vigili del fuoco plates only.')
+        print('  9. Generate auto special plates only.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
@@ -434,6 +473,10 @@ def driver_main():
         # Generate vigili del fuoco plates only
         elif choice == '8':
             ptype = 'vigili_fuoco'
+
+        # Generate auto special plates only
+        elif choice == '9':
+            ptype = 'auto_sp'
 
         # Exit
         elif choice == '0':
