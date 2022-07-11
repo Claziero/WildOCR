@@ -13,7 +13,7 @@ TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
 
 # Define plate types
-PLATE_TYPES = ['auto', 'moto', 'aeronautica', 'carabinieri']
+PLATE_TYPES = ['auto', 'moto', 'aeronautica', 'carabinieri', 'esercito', 'marina']
 
 # Dimension constants
 # Car plates are 200x44 pixels
@@ -37,7 +37,7 @@ moto_max_number_width = 90
 moto_initial_point = (25, 8)
 moto_middle_point = (8, 47)
 
-# Constants for aeronautica/carabinieri plates (image size: <200, 44>)
+# Constants for aeronautica/carabinieri/esercito/marina plates (image size: <200, 44>)
 aeronautica_max_number_width = 65
 aeronautica_middle_point = (70, 6)
 aeronautica_final_point = (130, 6)
@@ -66,6 +66,10 @@ def get_suffix(ptype:str) -> str:
         return '-aero'
     if ptype == 'carabinieri':
         return '-cara'
+    if ptype == 'esercito':
+        return '-eser'
+    if ptype == 'marina':
+        return '-mari'
     
     return ''
 
@@ -75,7 +79,8 @@ def get_plate_format(ptype:str) -> list[int]:
         return [2, 3, 2]
     if ptype == 'moto':
         return [2, 5, 0]
-    if ptype == 'aeronautica' or ptype == 'carabinieri':
+    if ptype == 'aeronautica' or ptype == 'carabinieri'\
+        or ptype == 'esercito' or ptype == 'marina':
         return [2, 3, 0]
     
     return [0, 0, 0]
@@ -164,12 +169,17 @@ def generate_plate(plate:str, ptype:str) -> Image:
         return img
         
     # Aeronautica plates
-    elif ptype == 'aeronautica' or 'carabinieri':
+    elif ptype == 'aeronautica' or ptype == 'carabinieri'\
+        or ptype == 'esercito' or ptype == 'marina':
         # Open base image
         if ptype == 'aeronautica':
             img = Image.open(aeronautica_empty_plate_path)
         elif ptype == 'carabinieri':
             img = Image.open(carabinieri_empty_plate_path)
+        elif ptype == 'esercito':
+            img = Image.open(esercito_empty_plate_path)
+        elif ptype == 'marina':
+            img = Image.open(marina_empty_plate_path)
 
         # Create a draw object
         draw = ImageDraw.Draw(img)
@@ -348,6 +358,8 @@ def driver_main():
         print('  3. Generate moto plates only.')
         print('  4. Generate aeronautica plates only.')
         print('  5. Generate carabinieri plates only.')
+        print('  6. Generate esercito plates only.')
+        print('  7. Generate marina plates only.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
@@ -370,6 +382,14 @@ def driver_main():
         # Generate carabinieri plates only
         elif choice == '5':
             ptype = 'carabinieri'
+
+        # Generate esercito plates only
+        elif choice == '6':
+            ptype = 'esercito'
+
+        # Generate marina plates only
+        elif choice == '7':
+            ptype = 'marina'
 
         # Exit
         elif choice == '0':
