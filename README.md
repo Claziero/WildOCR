@@ -6,46 +6,39 @@ For generating plates follow the driver instructions executing `py LicensePlateG
 Generated images will be saved into `LicensePlateGenerator/output/` folder.
 
 Possible plate types to generate:
-<div align="center" width="100%" style="display:flex; justify-content:center">
-    <div style="margin-right:auto; margin-left:auto;">
-        <img src="LicensePlateGenerator/assets/full-plate-auto.png?raw=true" alt="Auto">
-        <figcaption>Auto</figcaption>
-    </div>
-    <div style="margin-right:auto; margin-left:auto;">
-        <img src="LicensePlateGenerator/assets/full-plate-aeronautica-mil.png?raw=true" alt="Aeronautica Militare">
-        <figcaption>Aeronautica Militare</figcaption>
-    </div>
-    <div style="margin-right:auto; margin-left:auto;">
-        <img src="LicensePlateGenerator/assets/full-plate-carabinieri.png?raw=true" alt="Carabinieri">
-        <figcaption>Carabinieri</figcaption>
-    </div>
-</div>
-
-<div align="center" width="100%" style="display:flex; justify-content:center">
-    <div style="margin-right:auto; margin-left:auto;">
-        <img src="LicensePlateGenerator/assets/full-plate-esercito.png?raw=true" alt="Esercito Italiano">
-        <figcaption>Esercito Italiano</figcaption>
-    </div>
-    <div style="margin-right:auto; margin-left:auto;">
-        <img src="LicensePlateGenerator/assets/full-plate-marina-mil.png?raw=true" alt="Marina Militare">
-        <figcaption>Marina Militare</figcaption>
-    </div>
-    <div style="margin-right:auto; margin-left:auto;">
-        <img src="LicensePlateGenerator/assets/full-plate-vigili-fuoco.png?raw=true" alt="Vigili del fuoco">
+<table align="center">
+    <tr>
+        <td>
+            <img src="LicensePlateGenerator/assets/full-plate-auto.png?raw=true" alt="Auto"><br>
+            <figcaption>Auto</figcaption>
+        </td><td>
+            <img src="LicensePlateGenerator/assets/full-plate-aeronautica-mil.png?raw=true" alt="Aeronautica Militare"><br>
+            <figcaption>Aeronautica Militare</figcaption>
+        </td><td>
+            <img src="LicensePlateGenerator/assets/full-plate-carabinieri.png?raw=true" alt="Carabinieri"><br>
+            <figcaption>Carabinieri</figcaption>
+        </td>
+    </tr><tr>
+        <td>
+            <img src="LicensePlateGenerator/assets/full-plate-esercito.png?raw=true" alt="Esercito Italiano"><br>
+            <figcaption>Esercito Italiano</figcaption>
+        </td><td>
+            <img src="LicensePlateGenerator/assets/full-plate-marina-mil.png?raw=true" alt="Marina Militare"><br>
+            <figcaption>Marina Militare</figcaption>
+        </td><td>
+        <img src="LicensePlateGenerator/assets/full-plate-vigili-fuoco.png?raw=true" alt="Vigili del fuoco"><br>
         <figcaption>Vigili del fuoco</figcaption>
-    </div>
-</div>
-
-<div align="center" width="100%" style="display:flex; justify-content:center">
-    <div style="margin-right:auto; margin-left:auto;">
-        <img src="LicensePlateGenerator/assets/full-plate-moto.png?raw=true" alt="Motorbike">
-        <figcaption>Motorbike</figcaption>
-    </div>
-    <div style="margin-right:auto; margin-left:auto;">
-        <img src="LicensePlateGenerator/assets/full-plate-special-auto.png?raw=true" alt="Auto speciale">
-        <figcaption>Auto speciale</figcaption>
-    </div>
-</div>
+        </td>
+    </tr><tr>
+        <td>
+            <img src="LicensePlateGenerator/assets/full-plate-moto.png?raw=true" alt="Motorbike"><br>
+            <figcaption>Motorbike</figcaption>
+        </td><td>
+            <img src="LicensePlateGenerator/assets/full-plate-special-auto.png?raw=true" alt="Auto speciale"><br>
+            <figcaption>Auto speciale</figcaption>
+        </td>
+    </tr>
+</table>
 
 ## Usage
 Once plates have been generated, create the dataset following the driver instructions executing
