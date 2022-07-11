@@ -44,16 +44,16 @@ aeronautica_final_point = (130, 6)
 aeronautica_font_size = 46
 
 # Paths
-car_empty_plate_path = 'assets/plates/empty-plate-car.png'
-moto_empty_plate_path = 'assets/plates/empty-plate-moto.png'
-carabinieri_empty_plate_path = 'assets/plates/empty-plate-carabinieri.png'
-aeronautica_empty_plate_path = 'assets/plates/empty-plate-aeronautica-mil.png'
-esercito_empty_plate_path = 'assets/plates/empty-plate-esercito.png'
-marina_empty_plate_path = 'assets/plates/empty-plate-marina-mil.png'
-vigili_fuoco_empty_plate_path = 'assets/plates/empty-plate-vigili-fuoco.png'
-car_special_empty_plate_path = 'assets/plates/empty-plate-special-car.png'
+car_empty_plate_path = 'assets/empty-plate-car.png'
+moto_empty_plate_path = 'assets/empty-plate-moto.png'
+carabinieri_empty_plate_path = 'assets/empty-plate-carabinieri.png'
+aeronautica_empty_plate_path = 'assets/empty-plate-aeronautica-mil.png'
+esercito_empty_plate_path = 'assets/empty-plate-esercito.png'
+marina_empty_plate_path = 'assets/empty-plate-marina-mil.png'
+vigili_fuoco_empty_plate_path = 'assets/empty-plate-vigili-fuoco.png'
+car_special_empty_plate_path = 'assets/empty-plate-special-car.png'
 
-font_path = 'assets/plates/plates1999.ttf'
+font_path = 'assets/plates1999.ttf'
 output_path = 'output/'
 
 # Auxiliar function to get the -* suffix of plate names and generated files
