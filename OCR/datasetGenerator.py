@@ -15,8 +15,17 @@ For every image in the path, the dataset is generated with the following format:
           => generating the dataset, last 2 ints of a MOTO image will be 0
     - The image name is added to the dataset
     - The image name is converted to a list of ints
-        - (22 letters + 10 numbers) x 7 positions 
-          + 1 for discriminating plate types (0 = CAR, 1 = MOTO) = 225 ints
+        - (22 letters + 10 numbers) x 7 positions (max)
+          + 8 for discriminating plate types = 232 ints
+        - discriminating bits (assume 1 or 0) are disposed in the following order:
+            - CAR plate
+            - MOTORCYCLE plate
+            - AERONAUTICA MILITARE plate
+            - CARABINIERI plate
+            - ESERCITO plate
+            - MARINA MILITARE plate
+            - VIGILI DEL FUOCO plate
+            - AUTO SPECIALE plate
         - letters 'I', 'O', 'Q', 'U' are not allowed
 """
 
@@ -49,21 +58,41 @@ def calculate_gap(c:str) -> int:
         gap += 1
     return gap
 
-# Function to convert a number plate string in 225 ints
+# Function to convert a number plate string in 232 ints
 def convert_to_ints(string:str) -> list[int]:
     # Convert the "string" to a list of ints
     ints = []
 
-    for i in range(7):
+    size = len(string) - 5
+    for i in range(size):
         char = [0] * 32
         char[ord(string[i]) - 65 - calculate_gap(string[i])] = 1
         ints.extend(char)
+    
+    # Add remaining ints if necessary
+    if size < 7:
+        ints.extend([0] * (32 * (7 - size)))
 
-    # Add the last int for discriminating plate types
-    if len(string) == 8 and string[7] == 'm': # MOTO
-        ints.append(1)
-    else:
-        ints.append(0)
+    # Add last ints for discriminating plates
+    ptype = [0] * 8
+    if string.endswith('-auto'):
+        ptype[0] = 1
+    elif string.endswith('-moto'):
+        ptype[1] = 1
+    elif string.endswith('-aero'):
+        ptype[2] = 1
+    elif string.endswith('-cara'):
+        ptype[3] = 1
+    elif string.endswith('-eser'):
+        ptype[4] = 1
+    elif string.endswith('-mari'):
+        ptype[5] = 1
+    elif string.endswith('-vigf'):
+        ptype[6] = 1
+    elif string.endswith('-ausp'):
+        ptype[7] = 1
+    
+    ints.extend(ptype)
     return ints
 
 # Function to generate the dataset in .csv format
@@ -78,7 +107,7 @@ def generate_dataset_csv(path:str, filename:str) -> None:
         if elem.endswith('.png'):
             img = Image.open(path + elem)
             img = np.array(img)
-            if elem.endswith('m.png'):
+            if elem.endswith('-moto.png') or elem.endswith('-ausp.png'):
                 img = preprocess_moto(img)
             img = img.flatten()
             img = img.tolist()

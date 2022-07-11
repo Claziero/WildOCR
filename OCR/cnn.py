@@ -5,11 +5,20 @@
   > Input image is a grayscale image of a number plate
     of size <w:200, h:44, c:1> (CAR images) or <w:106, h:83, c:1> (MOTORCYCLE images)
 
-  > Output is a vector of length 225, where each element is a probability of the
-    corresponding digit to be a certain letter/number.
+  > Output is a vector of length 232, where each element is a probability of the
+    corresponding digit to be a certain letter/number/class.
     Every character is an array of 32 ints identifiing the specific character
     There are 7 characters in total, hence 32 * 7 = 224
-    The last element discriminates the plate type (0 = CAR, 1 = MOTORCYCLE)
+    The last 8 elements discriminate the plate type.
+    Discriminating bits (assume 1 or 0) are disposed in the following order:
+        - CAR plate
+        - MOTORCYCLE plate
+        - AERONAUTICA MILITARE plate
+        - CARABINIERI plate
+        - ESERCITO plate
+        - MARINA MILITARE plate
+        - VIGILI DEL FUOCO plate
+        - AUTO SPECIALE plate
 
   > The network consists of a series of convolutional layers, followed by a
     series of fully connected layer.
@@ -46,13 +55,14 @@ class ConvNet(nn.Module):
         self.valid_accuracy_array = []
 
         # Network parameters
+        self.last_bits_count = 8
         self.l1_out_ch = 5
         self.l2_out_ch = 10
         self.fc1_in_dim = self.l2_out_ch * 9 * 48
         self.fc1_out_dim = self.fc1_in_dim // 2
         self.fc2_out_dim = self.fc1_out_dim // 2
         self.fc3_out_dim = self.fc2_out_dim // 2
-        self.fc4_out_dim = 32 * 7 + 1
+        self.fc4_out_dim = 32 * 7 + self.last_bits_count
 
         # Initial image size: <w:200, h:44, c:1>
         # Convolutional layer 1: <w:200, h:44, c:1> -> <w:99, h:21>
@@ -69,7 +79,7 @@ class ConvNet(nn.Module):
             torch.nn.MaxPool2d(kernel_size = 2, stride = 2)
         )
 
-        # Fully connected layer: output size = (32 * 7) + 1 = 225 neurons
+        # Fully connected layer: output size = (32 * 7) + 8 = 232 neurons
         self.fc = torch.nn.Sequential(
             torch.nn.Linear(self.fc1_in_dim, self.fc1_out_dim),
             torch.nn.ReLU(),
@@ -192,13 +202,21 @@ class ConvNet(nn.Module):
         # For every character in the net output
         for i in range(7):
             # Check the 32 positions
-            out_index = np.argmax(net_output[32 * i:32 * (i + 1)])
             sol_index = np.argmax(Y_test[32 * i:32 * (i + 1)])
-            if out_index == sol_index:
-                correct += 1
 
-        # Check the last bit discriminating the plates
-        if round(float(net_output[-1])) == Y_test[-1]:
+            # If last 2 characters are null, don't count them as a failure
+            # because the network doesn't need to predict them
+            if i > 4 and sol_index == 0 and Y_test[32 * i] == 0:
+                correct += 1
+            else:
+                out_index = np.argmax(net_output[32 * i:32 * (i + 1)])
+                if out_index == sol_index:
+                    correct += 1
+
+        # Check the last bits discriminating the plates
+        out_ptype = np.argmax(net_output[-self.last_bits_count:])
+        sol_ptype = np.argmax(Y_test[-self.last_bits_count:])
+        if out_ptype == sol_ptype:
             correct += 1
 
         return correct
@@ -226,12 +244,39 @@ class ConvNet(nn.Module):
         # Convert the output to a string
         out_string = ''
 
+        # Calculate plate type from prediction
+        ptype = np.argmax(net_output[-8:])
         for i in range(7):
+            # If plate type has only 5 characters, break the loop
+            if i > 4 and ptype != 0 and ptype != 1 and ptype != 8:
+                break
+
             out_index = np.argmax(net_output[32 * i:32 * (i + 1)])
             out_string += chr(out_index + 65 + self.calculate_gap(out_index))
 
         return out_string
 
+    # Function to convert the plate type into a string
+    def plate_type_to_string(self, ptype:int) -> str:
+        if ptype == 0:
+            return 'auto'
+        if ptype == 1:
+            return 'moto'
+        if ptype == 2:
+            return 'aeronautica'
+        if ptype == 3:
+            return 'carabinieri'
+        if ptype == 4:
+            return 'esercito'
+        if ptype == 5:
+            return 'marina'
+        if ptype == 6:
+            return 'vigfuoco'
+        if ptype == 7:
+            return 'autosp'
+        
+        return None
+        
     # Function to save the predictions in string format
     def save_predictions(self, X_test:np.ndarray, Y_pred:torch.Tensor, Y_test:np.ndarray, filename:str) -> None:
         f = open(filename, 'a+')
@@ -241,46 +286,53 @@ class ConvNet(nn.Module):
         test_string = self.output_to_string(Y_test)
         X_test = str(np.array(X_test).flatten().tolist())[1:-1]
 
+        # Get the type prediction and truth
+        out_ptype = self.plate_type_to_string(np.argmax(Y_pred[-self.last_bits_count:]))
+        sol_ptype = self.plate_type_to_string(np.argmax(Y_test[-self.last_bits_count:]))
+
         # Write the output to the file
-        f.write(X_test + ',' + out_string + ',' + test_string + '\n')
+        f.write(X_test + ',' + out_string + ',' + out_ptype 
+            + ',' + test_string + ',' + sol_ptype +'\n')
         f.close()
         return
 
     # Function to show "num" images with their predictions
     def show_predictions(self, num:int, preds:str='preds.csv') -> None:
-        # Read the predictions file and get the first "num" images
-        with open(preds, 'r') as f:
-            lines = ''
-            for _ in range(num):
-                lines += f.readline()
-
-        # Convert the lines to a dataframe
-        lines = StringIO(lines)
-        lines = pd.read_csv(lines, header=None)
+        # Read the predictions file and get "num" random images
+        lines = pd.read_csv(preds, header=None)
+        lines = lines.sample(n=num)
 
         # Get the images and predictions
-        img = lines.iloc[:, :-2]
-        Y_pred = lines.iloc[:, -2]
-        Y_test = lines.iloc[:, -1]
+        img = lines.iloc[:, :-4]
+        Y_pred = lines.iloc[:, -4]
+        ptype_pred = lines.iloc[:, -3]
+        Y_test = lines.iloc[:, -2]
+        ptype_test = lines.iloc[:, -1]
 
         # Plot
         rows = ceil(sqrt(num))
-        fig = plt.figure(figsize=(rows, rows / 2), constrained_layout=True)
+        fig = plt.figure(figsize=(rows*2, rows), constrained_layout=True)
         for i in range(num):
             # Get the image, prediction and test string
-            # If the expected value of the string ends with 'm', than is a MOTO plate
-            if Y_test.iloc[i][-1] == 'm':
+            # If the predicted plate type is 'moto' or 'autosp, then it has a different shape
+            if ptype_pred.iloc[i] == 'moto' or ptype_pred.iloc[i] == 'autosp':
                 img_array = self.reverse_moto(img.iloc[i])
             else:
                 img_array = np.array(img.iloc[i]).reshape(44, 200)
             
             prediction = Y_pred.iloc[i]
+            ptype = ptype_pred.iloc[i]
+
+            if ptype == ptype_test.iloc[i] and prediction == Y_test.iloc[i]:
+                color = 'green'
+            else:
+                color = 'red'
             
             # Plot the image
             fig.add_subplot(rows, rows, i + 1)
             plt.imshow(img_array, cmap='gray')
             plt.axis('off')
-            plt.title(prediction)
+            plt.title(prediction + '\n' + ptype, color=color)
 
         plt.show()
         return
