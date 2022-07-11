@@ -13,7 +13,7 @@ TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
 
 # Define plate types
-PLATE_TYPES = ['auto', 'moto', 'aeronautica', 'carabinieri', 'esercito', 'marina']
+PLATE_TYPES = ['auto', 'moto', 'aeronautica', 'carabinieri', 'esercito', 'marina', 'vigili_fuoco']
 
 # Dimension constants
 # Car plates are 200x44 pixels
@@ -43,6 +43,11 @@ aeronautica_middle_point = (70, 6)
 aeronautica_final_point = (130, 6)
 aeronautica_font_size = 46
 
+#Constants for vigili del fuoco plates (image size: <200, 44>)
+vigili_fuoco_max_number_width = 115
+vigili_fuoco_middle_point = (77, 6)
+vigili_fuoco_font_size = 46
+
 # Paths
 auto_empty_plate_path = 'assets/empty-plate-auto.png'
 moto_empty_plate_path = 'assets/empty-plate-moto.png'
@@ -70,6 +75,8 @@ def get_suffix(ptype:str) -> str:
         return '-eser'
     if ptype == 'marina':
         return '-mari'
+    if ptype == 'vigili_fuoco':
+        return '-vigf'
     
     return ''
 
@@ -82,6 +89,8 @@ def get_plate_format(ptype:str) -> list[int]:
     if ptype == 'aeronautica' or ptype == 'carabinieri'\
         or ptype == 'esercito' or ptype == 'marina':
         return [2, 3, 0]
+    if ptype == 'vigili_fuoco':
+        return [0, 5, 0]
     
     return [0, 0, 0]
 
@@ -202,6 +211,36 @@ def generate_plate(plate:str, ptype:str) -> Image:
             draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         else:
             draw.text(aeronautica_final_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
+        return img
+
+    # Vigili del fuoco plates
+    elif ptype == 'vigili_fuoco':
+        # Open base image
+        img = Image.open(vigili_fuoco_empty_plate_path)
+        # Create a draw object
+        draw = ImageDraw.Draw(img)
+        # Create a font object
+        font = ImageFont.truetype(font_path, vigili_fuoco_font_size)
+        
+        # Justify center text (central numbers)
+        spaces = vigili_fuoco_max_number_width - draw.textlength(plate, font=font)
+        if spaces > 5:
+            spaces = floor(spaces / 5)
+            draw.text(vigili_fuoco_middle_point, plate[0], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
+
+            off1 = (draw.textlength(plate[0], font=font) + spaces + vigili_fuoco_middle_point[0], vigili_fuoco_middle_point[1])
+            draw.text(off1, plate[1], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
+
+            off2 = (draw.textlength(plate[0:2], font=font) + 2 * spaces + vigili_fuoco_middle_point[0], vigili_fuoco_middle_point[1])
+            draw.text(off2, plate[2], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
+
+            off3 = (draw.textlength(plate[0:3], font=font) + 3 * spaces + vigili_fuoco_middle_point[0], vigili_fuoco_middle_point[1])
+            draw.text(off3, plate[3], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
+
+            off4 = (draw.textlength(plate[0:4], font=font) + 4 * spaces + vigili_fuoco_middle_point[0], vigili_fuoco_middle_point[1])
+            draw.text(off4, plate[4], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
+        else:
+            draw.text(vigili_fuoco_middle_point, plate, fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         return img
 
     # Incorrect plate type
@@ -360,6 +399,7 @@ def driver_main():
         print('  5. Generate carabinieri plates only.')
         print('  6. Generate esercito plates only.')
         print('  7. Generate marina plates only.')
+        print('  8. Generate vigili del fuoco plates only.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
@@ -390,6 +430,10 @@ def driver_main():
         # Generate marina plates only
         elif choice == '7':
             ptype = 'marina'
+
+        # Generate vigili del fuoco plates only
+        elif choice == '8':
+            ptype = 'vigili_fuoco'
 
         # Exit
         elif choice == '0':
