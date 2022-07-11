@@ -13,7 +13,7 @@ TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
 
 # Define plate types
-PLATE_TYPES = ['car', 'moto']
+PLATE_TYPES = ['car', 'moto', 'aeronautica']
 
 # Dimension constants
 # Car plates are 200x44 pixels
@@ -37,6 +37,12 @@ moto_max_number_width = 90
 moto_initial_point = (25, 8)
 moto_middle_point = (8, 47)
 
+# Constants for aeronautica plates (image size: <200, 44>)
+aeronautica_max_number_width = 65
+aeronautica_middle_point = (70, 6)
+aeronautica_final_point = (130, 6)
+aeronautica_font_size = 46
+
 # Paths
 car_empty_plate_path = 'assets/plates/empty-plate-car.png'
 moto_empty_plate_path = 'assets/plates/empty-plate-moto.png'
@@ -56,6 +62,8 @@ def get_suffix(ptype:str) -> str:
         return '-car'
     if ptype == 'moto':
         return '-moto'
+    if ptype == 'aeronautica':
+        return '-aero'
     
     return ''
 
@@ -65,6 +73,8 @@ def get_plate_format(ptype:str) -> list[int]:
         return [2, 3, 2]
     if ptype == 'moto':
         return [2, 5, 0]
+    if ptype == 'aeronautica':
+        return [2, 3, 0]
     
     return [0, 0, 0]
 
@@ -149,7 +159,33 @@ def generate_plate(plate:str, ptype:str) -> Image:
             draw.text(off4, plate[6], fill=(0, 0, 0), font=font, stroke_width=moto_stroke_width)
         else:
             draw.text(moto_middle_point, plate[2:], fill=(0, 0, 0), font=font, stroke_width=moto_stroke_width)
+        return img
         
+    # Aeronautica plates
+    elif ptype == 'aeronautica':
+        # Open base image
+        img = Image.open(aeronautica_empty_plate_path)
+        # Create a draw object
+        draw = ImageDraw.Draw(img)
+        # Create a font object
+        font = ImageFont.truetype(font_path, aeronautica_font_size)
+
+        # Draw the plate (central letters)
+        draw.text(aeronautica_middle_point, plate[:2], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+        
+        # Justify center text (central numbers)
+        spaces = aeronautica_max_number_width - draw.textlength(plate[2:5], font=font)
+        if spaces > 3:
+            spaces = floor(spaces / 3)
+            draw.text(aeronautica_final_point, plate[2], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+
+            off1 = (draw.textlength(plate[2], font=font) + spaces + aeronautica_final_point[0], aeronautica_middle_point[1])
+            draw.text(off1, plate[3], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+
+            off2 = (draw.textlength(plate[2:4], font=font) + 2 * spaces + aeronautica_final_point[0], aeronautica_middle_point[1])
+            draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+        else:
+            draw.text(aeronautica_final_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
         return img
 
     # Incorrect plate type
@@ -211,7 +247,7 @@ def generate_noise_image(width:int=1000, height:int=1000) -> np.ndarray:
 
 # Function to create plates with random noise (gray only)
 def create_noisy_plate(ptype:str='car', noise:np.ndarray=None) -> None:
-    if ptype == 'car':
+    if ptype == 'car' or ptype == 'aeronautica':
         xpix, ypix = car_image_width, car_image_height
     elif ptype == 'moto':
         xpix, ypix = moto_image_width, moto_image_height
@@ -251,35 +287,45 @@ def create_noisy_plate(ptype:str='car', noise:np.ndarray=None) -> None:
     return
 
 # Driver function
-def main(nplates:int, gray:bool, perc:int, ptype:str, new_noise:int=1000) -> None:
+def main(nplates:int, gray:bool, perc_noise:int, ptype:str, new_noise:int=1000) -> None:
     # Create the output directory if necessary
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-    # Create the files "generated.txt" and "generated-m.txt" if not existing
+    # Create the files "generated-*.txt" if not exist
     for t in PLATE_TYPES:
         f = open(output_path + 'generated{}.txt'.format(get_suffix(t)), 'a+')
         f.close()
 
-    # Generate "nplates" random plates
-    noisy = int(nplates * perc / 100)
-    if nplates - noisy:
-        print(TEXT_GREEN 
-            + '>> Generating {} plates in {} (CLEAR) ({})'.format(nplates - noisy,
-            'GRAY' if gray == True else 'COLOR', ptype)
-            + TEXT_RESET)
-        for _ in tqdm(range(nplates - noisy)):
-            create_plate(gray=gray, ptype=ptype)
-    
-    if noisy:
-        print(TEXT_GREEN 
-            + '>> Generating {} plates in GRAY (NOISY) ({})'.format(noisy, ptype)
-            + TEXT_RESET)
-        for i in tqdm(range(noisy)):
-            # Every "new_noise" iterations regenerate the noise image
-            if i % new_noise == 0:
-                noise = generate_noise_image()
-            create_noisy_plate(ptype=ptype, noise=noise)
+    # Switch on ptype parameter
+    if ptype == 'mixed':
+        # Generate equal number of plates for each type
+        n = nplates // len(PLATE_TYPES)
+    else:
+        n = nplates
+
+    for t in range(len(PLATE_TYPES) if n != nplates else 1):
+        # Generate "n" random plates
+        noisy = int(n * perc_noise / 100)
+        p = PLATE_TYPES[t] if n != nplates else ptype
+
+        if n - noisy:
+            print(TEXT_GREEN 
+                + '>> Generating {} plates in {} (CLEAR) ({})'.format(n - noisy,
+                'GRAY' if gray == True else 'COLOR', p)
+                + TEXT_RESET)
+            for _ in tqdm(range(n - noisy)):
+                create_plate(gray=gray, ptype=p)
+        
+        if noisy:
+            print(TEXT_GREEN 
+                + '>> Generating {} plates in GRAY (NOISY) ({})'.format(noisy, p)
+                + TEXT_RESET)
+            for i in tqdm(range(noisy)):
+                # Every "new_noise" iterations regenerate the noise image
+                if i % new_noise == 0:
+                    noise = generate_noise_image()
+                create_noisy_plate(ptype=p, noise=noise)
 
     return
 
@@ -289,26 +335,28 @@ def driver_main():
 
     while choice != '0':
         print(TEXT_YELLOW + '>> Driver helper. Select the function to run. Type:' + TEXT_RESET)
-        print('  1. Generate car and moto plates.')
+        print('  1. Generate mixed plates.')
         print('  2. Generate car plates only.')
         print('  3. Generate moto plates only.')
+        print('  4. Generate aeronautica plates only.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
-        # Generate car and moto plates
+        # Generate mixed plates
         if choice == '1':
-            ratio = input('Enter the percentage of car plates [Enter = \"50%\"]: ')
-            if ratio == '':
-                ratio = 50
-            ratio = int(ratio)
+            ptype = 'mixed'
 
         # Generate car plates only
         elif choice == '2':
-            ratio = 100
+            ptype = 'car'
 
         # Generate moto plates only
         elif choice == '3':
-            ratio = 0
+            ptype = 'moto'
+
+        # Generate aeronautica plates only
+        elif choice == '4':
+            ptype = 'aeronautica'
 
         # Exit
         elif choice == '0':
@@ -329,13 +377,18 @@ def driver_main():
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
+        # Exit
+        if choice == '0':
+            print(TEXT_YELLOW + '>> Exiting.' + TEXT_RESET)
+            break
+
+        nplates = input('Enter the number of plates to generate [Enter = \"1000\"]: ')
+        if nplates == '':
+            nplates = 1000
+        nplates = int(nplates)
+
         # Generate mixed normal/noisy images
         if choice == '1':
-            nplates = input('Enter the number of plates to generate [Enter = \"1000\"]: ')
-            if nplates == '':
-                nplates = 1000
-            nplates = int(nplates)
-
             perc = input('Enter the percentage of noisy images to generate [Enter = \"50%\"]: ')
             if perc == '':
                 perc = 50
@@ -346,48 +399,24 @@ def driver_main():
                 new_noise = 1000
             new_noise = int(new_noise)            
 
-            main(nplates=int(nplates * ratio/100), gray=True, perc=perc, ptype='car')
-            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=perc, ptype='moto')
+            main(nplates=nplates, gray=True, perc_noise=perc, ptype=ptype, new_noise=new_noise)
 
         # Generate normal images only
         elif choice == '2':
-            nplates = input('Enter the number of plates to generate [Enter = \"1000\"]: ')
-            if nplates == '':
-                nplates = 1000
-            nplates = int(nplates)
-
-            main(nplates=int(nplates * ratio/100), gray=True, perc=0, ptype='car')
-            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=0, ptype='moto')
+            main(nplates=nplates, gray=True, perc_noise=0, ptype=ptype)
 
         # Generate noisy images only
         elif choice == '3':
-            nplates = input('Enter the number of plates to generate [Enter = \"1000\"]: ')
-            if nplates == '':
-                nplates = 1000
-            nplates = int(nplates)
-
             new_noise = input('Regenerate the noise image every [Enter = \"1000\"] plates: ')
             if new_noise == '':
                 new_noise = 1000
             new_noise = int(new_noise)
 
-            main(nplates=int(nplates * ratio/100), gray=True, perc=100, ptype='car')
-            main(nplates=int(nplates * (100-ratio)/100), gray=True, perc=100, ptype='moto')
+            main(nplates=nplates, gray=True, perc_noise=100, ptype=ptype, new_noise=new_noise)
 
         # Generate coloured images
         elif choice == '4':
-            nplates = input('Enter the number of plates to generate [Enter = \"1000\"]: ')
-            if nplates == '':
-                nplates = 1000
-            nplates = int(nplates)
-
-            main(nplates=int(nplates * ratio/100), gray=False, perc=0, ptype='car')
-            main(nplates=int(nplates * (100-ratio)/100), gray=False, perc=0, ptype='moto')
-
-        # Exit
-        elif choice == '0':
-            print(TEXT_YELLOW + '>> Exiting.' + TEXT_RESET)
-            break
+            main(nplates=nplates, gray=False, perc_noise=0, ptype=ptype)
 
         # Invalid input
         else:
