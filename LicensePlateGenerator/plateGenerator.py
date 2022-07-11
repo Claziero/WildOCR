@@ -13,13 +13,13 @@ TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
 
 # Define plate types
-PLATE_TYPES = ['car', 'moto', 'aeronautica']
+PLATE_TYPES = ['auto', 'moto', 'aeronautica', 'carabinieri']
 
 # Dimension constants
 # Car plates are 200x44 pixels
-car_image_width, car_image_height = 200, 44
-car_font_size = 40
-car_stroke_width = 0
+auto_image_width, auto_image_height = 200, 44
+auto_font_size = 40
+auto_stroke_width = 0
 
 # Moto plates are 106x83 pixels
 moto_image_width, moto_image_height = 106, 83
@@ -27,53 +27,55 @@ moto_font_size = 40
 moto_stroke_width = 0
 
 # Constants for car plates (image size: <200, 44>)
-car_max_number_width = 65
-car_initial_point = (25, 8)
-car_middle_point = (77, 8)
-car_final_point = (137, 8)
+auto_max_number_width = 65
+auto_initial_point = (25, 8)
+auto_middle_point = (77, 8)
+auto_final_point = (137, 8)
 
 # Constants for moto plates (image size: <106, 83>)
 moto_max_number_width = 90
 moto_initial_point = (25, 8)
 moto_middle_point = (8, 47)
 
-# Constants for aeronautica plates (image size: <200, 44>)
+# Constants for aeronautica/carabinieri plates (image size: <200, 44>)
 aeronautica_max_number_width = 65
 aeronautica_middle_point = (70, 6)
 aeronautica_final_point = (130, 6)
 aeronautica_font_size = 46
 
 # Paths
-car_empty_plate_path = 'assets/empty-plate-car.png'
+auto_empty_plate_path = 'assets/empty-plate-auto.png'
 moto_empty_plate_path = 'assets/empty-plate-moto.png'
 carabinieri_empty_plate_path = 'assets/empty-plate-carabinieri.png'
 aeronautica_empty_plate_path = 'assets/empty-plate-aeronautica-mil.png'
 esercito_empty_plate_path = 'assets/empty-plate-esercito.png'
 marina_empty_plate_path = 'assets/empty-plate-marina-mil.png'
 vigili_fuoco_empty_plate_path = 'assets/empty-plate-vigili-fuoco.png'
-car_special_empty_plate_path = 'assets/empty-plate-special-car.png'
+car_special_empty_plate_path = 'assets/empty-plate-special-auto.png'
 
 font_path = 'assets/plates1999.ttf'
 output_path = 'output/'
 
 # Auxiliar function to get the -* suffix of plate names and generated files
 def get_suffix(ptype:str) -> str:
-    if ptype == 'car':
-        return '-car'
+    if ptype == 'auto':
+        return '-auto'
     if ptype == 'moto':
         return '-moto'
     if ptype == 'aeronautica':
         return '-aero'
+    if ptype == 'carabinieri':
+        return '-cara'
     
     return ''
 
 # Auxiliar function to get the format of the plate string
 def get_plate_format(ptype:str) -> list[int]:
-    if ptype == 'car':
+    if ptype == 'auto':
         return [2, 3, 2]
     if ptype == 'moto':
         return [2, 5, 0]
-    if ptype == 'aeronautica':
+    if ptype == 'aeronautica' or ptype == 'carabinieri':
         return [2, 3, 0]
     
     return [0, 0, 0]
@@ -99,33 +101,33 @@ def generate_plate_number(initial_letters:int, central_numbers:int, final_letter
 # Function to create an image with the given plate
 def generate_plate(plate:str, ptype:str) -> Image:
     # Car plates
-    if ptype == 'car':
+    if ptype == 'auto':
         # Open base image
-        img = Image.open(car_empty_plate_path)
+        img = Image.open(auto_empty_plate_path)
         # Create a draw object
         draw = ImageDraw.Draw(img)
         # Create a font object
-        font = ImageFont.truetype(font_path, car_font_size)
+        font = ImageFont.truetype(font_path, auto_font_size)
 
         # Draw the plate (initial letters)
-        draw.text(car_initial_point, plate[:2], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+        draw.text(auto_initial_point, plate[:2], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         
         # Justify center text (central numbers)
-        spaces = car_max_number_width - draw.textlength(plate[2:5], font=font)
+        spaces = auto_max_number_width - draw.textlength(plate[2:5], font=font)
         if spaces > 3:
             spaces = floor(spaces / 3)
-            draw.text(car_middle_point, plate[2], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+            draw.text(auto_middle_point, plate[2], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
 
-            off1 = (draw.textlength(plate[2], font=font) + spaces + car_middle_point[0], car_middle_point[1])
-            draw.text(off1, plate[3], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+            off1 = (draw.textlength(plate[2], font=font) + spaces + auto_middle_point[0], auto_middle_point[1])
+            draw.text(off1, plate[3], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
 
-            off2 = (draw.textlength(plate[2:4], font=font) + 2 * spaces + car_middle_point[0], car_middle_point[1])
-            draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+            off2 = (draw.textlength(plate[2:4], font=font) + 2 * spaces + auto_middle_point[0], auto_middle_point[1])
+            draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         else:
-            draw.text(car_middle_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+            draw.text(auto_middle_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         
         # Draw the plate (final letters)
-        draw.text(car_final_point, plate[5:], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+        draw.text(auto_final_point, plate[5:], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         return img
     
     # Moto plates
@@ -162,30 +164,34 @@ def generate_plate(plate:str, ptype:str) -> Image:
         return img
         
     # Aeronautica plates
-    elif ptype == 'aeronautica':
+    elif ptype == 'aeronautica' or 'carabinieri':
         # Open base image
-        img = Image.open(aeronautica_empty_plate_path)
+        if ptype == 'aeronautica':
+            img = Image.open(aeronautica_empty_plate_path)
+        elif ptype == 'carabinieri':
+            img = Image.open(carabinieri_empty_plate_path)
+
         # Create a draw object
         draw = ImageDraw.Draw(img)
         # Create a font object
         font = ImageFont.truetype(font_path, aeronautica_font_size)
 
         # Draw the plate (central letters)
-        draw.text(aeronautica_middle_point, plate[:2], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+        draw.text(aeronautica_middle_point, plate[:2], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         
         # Justify center text (central numbers)
         spaces = aeronautica_max_number_width - draw.textlength(plate[2:5], font=font)
         if spaces > 3:
             spaces = floor(spaces / 3)
-            draw.text(aeronautica_final_point, plate[2], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+            draw.text(aeronautica_final_point, plate[2], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
 
             off1 = (draw.textlength(plate[2], font=font) + spaces + aeronautica_final_point[0], aeronautica_middle_point[1])
-            draw.text(off1, plate[3], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+            draw.text(off1, plate[3], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
 
             off2 = (draw.textlength(plate[2:4], font=font) + 2 * spaces + aeronautica_final_point[0], aeronautica_middle_point[1])
-            draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+            draw.text(off2, plate[4], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         else:
-            draw.text(aeronautica_final_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=car_stroke_width)
+            draw.text(aeronautica_final_point, plate[2:5], fill=(0, 0, 0), font=font, stroke_width=auto_stroke_width)
         return img
 
     # Incorrect plate type
@@ -203,7 +209,7 @@ def check_plate_number(plate:str, ptype:str) -> bool:
     return False
 
 # Function to create and save a plate
-def create_plate(gray:bool=True, ptype:str='car') -> None:
+def create_plate(gray:bool=True, ptype:str='auto') -> None:
     # Generate a random plate number
     seq = get_plate_format(ptype)
     plate = generate_plate_number(seq[0], seq[1], seq[2])
@@ -246,11 +252,13 @@ def generate_noise_image(width:int=1000, height:int=1000) -> np.ndarray:
     return np.array(pic) * 255
 
 # Function to create plates with random noise (gray only)
-def create_noisy_plate(ptype:str='car', noise:np.ndarray=None) -> None:
-    if ptype == 'car' or ptype == 'aeronautica':
-        xpix, ypix = car_image_width, car_image_height
-    elif ptype == 'moto':
+def create_noisy_plate(ptype:str='auto', noise:np.ndarray=None) -> None:
+    # Moto plates have different shape
+    if ptype == 'moto':
         xpix, ypix = moto_image_width, moto_image_height
+    # Every other plate is basically a car plate
+    else:
+        xpix, ypix = auto_image_width, auto_image_height
 
     # Cut a random window from the noise image of dimensions (xpix, ypix)
     x = random.randint(0, 1000 - xpix)
@@ -336,9 +344,10 @@ def driver_main():
     while choice != '0':
         print(TEXT_YELLOW + '>> Driver helper. Select the function to run. Type:' + TEXT_RESET)
         print('  1. Generate mixed plates.')
-        print('  2. Generate car plates only.')
+        print('  2. Generate auto plates only.')
         print('  3. Generate moto plates only.')
         print('  4. Generate aeronautica plates only.')
+        print('  5. Generate carabinieri plates only.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
@@ -346,9 +355,9 @@ def driver_main():
         if choice == '1':
             ptype = 'mixed'
 
-        # Generate car plates only
+        # Generate auto plates only
         elif choice == '2':
-            ptype = 'car'
+            ptype = 'auto'
 
         # Generate moto plates only
         elif choice == '3':
@@ -357,6 +366,10 @@ def driver_main():
         # Generate aeronautica plates only
         elif choice == '4':
             ptype = 'aeronautica'
+
+        # Generate carabinieri plates only
+        elif choice == '5':
+            ptype = 'carabinieri'
 
         # Exit
         elif choice == '0':
