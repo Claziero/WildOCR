@@ -28,8 +28,8 @@ class PlateDetect:
         self.img = cv2.imread(image_path)
         self.img_gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
 
-        cv2.imshow("Gray", self.img_gray)
-        cv2.waitKey(0)
+        # cv2.imshow("Gray", self.img_gray)
+        # cv2.waitKey(0)
         return
 
     # Function to edge detection
@@ -39,8 +39,8 @@ class PlateDetect:
         #Edge detection
         self.edged = cv2.Canny(bfilter, 30, 200)
 
-        cv2.imshow("Edged", self.edged)
-        cv2.waitKey(0)
+        # cv2.imshow("Edged", self.edged)
+        # cv2.waitKey(0)
         return
 
     # Function to find contours
@@ -62,8 +62,8 @@ class PlateDetect:
         y2, x2 = self.location[2][0]
         self.cropped = self.img_gray[x1:x2+1, y1:y2+1]
 
-        cv2.imshow("Cropped", self.cropped)
-        cv2.waitKey(0)
+        # cv2.imshow("Cropped", self.cropped)
+        # cv2.waitKey(0)
         return
 
     # Function to write the OCR string to the image
@@ -85,8 +85,8 @@ class PlateDetect:
             color=(0, 255, 0),
             thickness=3)
         
-        cv2.imshow("Result", self.result)
-        cv2.waitKey(0)
+        # cv2.imshow("Result", self.result)
+        # cv2.waitKey(0)
         return
 
     # Function to save the image
@@ -95,13 +95,11 @@ class PlateDetect:
         return
 
     # Function to execute all functions in order
-    def detectAndOCR(self, image_path:str, output_path:str) -> None:
+    def detect(self, image_path:str) -> cv2.Mat:
         self.read_image(image_path)
         self.edge_detection()
         self.find_contours()
-        self.write_ocr("OCR")
-        self.save_image(output_path)
-        return
+        return self.cropped
 
 
 # Driver function
@@ -109,13 +107,4 @@ def driver() -> None:
     # Create the output directory if necessary
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-
-    # Create an object of PlateDetect class and run the detectAndOCR function
-    pd = PlateDetect()
-    pd.detectAndOCR(input_path + "test.jpg", output_path + "test.jpg")
-    
     return
-
-if __name__ == "__main__":
-    driver()
-    

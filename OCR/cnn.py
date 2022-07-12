@@ -28,8 +28,6 @@ import torch
 import numpy as np
 import pandas as pd
 import torch.nn as nn
-from PIL import Image
-from io import StringIO
 from math import ceil, sqrt
 import matplotlib.pyplot as plt
 from datasetGenerator import reverse_moto
@@ -341,7 +339,7 @@ class ConvNet(nn.Module):
     # Function to show the loss function
     def show_loss(self) -> None:
         # Plot the train loss function
-        plot = plt.figure(figsize=(10, 5))
+        plot = plt.figure(figsize=(15, 5))
         plot.add_subplot(1, 3, 1)
         plt.plot(self.train_loss_array)
         plt.title('Training Loss')
