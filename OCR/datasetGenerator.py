@@ -171,6 +171,35 @@ def preprocess_moto(X:np.ndarray) -> np.ndarray:
     
     # Return the image array
     return img
+
+# Function to reverse the MOTO plate preprocessing (to be shown as the original image)
+def reverse_moto(X:np.ndarray) -> np.ndarray:
+    """
+        The MOTO image is (now) of size <w:200, h:44>.
+        The MOTO image is resized to <w:106, h:83> to be shown as the original image.
+        The image will be cut in half horizontally to get 2 images 
+        of size <100, 44> each, then the images will be scaled to <106, 42> and <106, 41>
+        and the two images will be concatenated vertically to get the final image of size <106, 83>.
+    """
+
+    # Open the image from the array
+    img = Image.fromarray(X.reshape(44, 200) * 255)
+
+    # Cut the image
+    img_1 = img.crop((0, 0, 100, 44))
+    img_2 = img.crop((100, 0, 200, 44))
+
+    # Resize the images
+    img_1 = img_1.resize((106, 42), Image.ANTIALIAS)
+    img_2 = img_2.resize((106, 41), Image.ANTIALIAS)
+    
+    # Concatenate the images
+    img_1 = np.array(img_1)
+    img_2 = np.array(img_2)
+    img = np.concatenate((img_1, img_2), axis=0)
+    
+    # Return the image
+    return img
     
 
 # Main function
