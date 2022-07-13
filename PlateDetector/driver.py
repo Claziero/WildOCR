@@ -17,7 +17,7 @@ TEXT_BLUE = '\033[94m'
 # Dimension constants
 # Car plates are 200x44 pixels
 auto_image_width, auto_image_height = 200, 44
-auto_min_ar, auto_max_ar = 4, 5 # Correct AR = 1.45
+auto_min_ar, auto_max_ar = 4, 5.5 # Correct AR = 4.54
 
 # Moto plates are 106x83 pixels
 moto_image_width, moto_image_height = 106, 83
@@ -89,14 +89,14 @@ def driver() -> None:
         # Run detection on an image
         elif choice == '2':
             print('Input images will be taken from \"' + images_path + '\" folder.')
-            in_name = input('Enter the name of the image [Enter = \"test.png\"]: ')
+            in_name = input('Enter the name of the image [Enter = \"test.jpg\"]: ')
             if in_name == '':
-                in_name = 'test.png'
+                in_name = 'test.jpg'
             
             print('Output images will be saved to \"' + output_path + '\" folder.')
-            out_name = input('Enter the name of the output image [Enter = \"test_out.png\"]: ')
+            out_name = input('Enter the name of the output image [Enter = \"test_out.jpg\"]: ')
             if out_name == '':
-                out_name = 'test_out.png'
+                out_name = 'test_out.jpg'
 
             # Run the detection
             pd = PlateDetect()
