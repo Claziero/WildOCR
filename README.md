@@ -40,6 +40,13 @@ Possible plate types to generate:
     </tr>
 </table>
 
+## Installation
+Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/ .
+
+Also, install all requirements via PIP using `pip install -r requirements.txt`.
+
+For a better experience, is recommended to install CUDA and cudnn packages.
+
 ## Usage
 Once plates have been generated, create the dataset following the driver instructions executing
 `py OCR/datasetGenerator.py`.
