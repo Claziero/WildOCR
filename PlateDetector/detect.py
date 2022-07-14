@@ -3,8 +3,8 @@ import cv2
 import imutils
 
 # Define paths
-input_path = "images/"
-output_path = "output/"
+input_path = "imgs/"
+output_path = "outp/"
 
 # Class PlateDetect
 class PlateDetect:
@@ -39,7 +39,7 @@ class PlateDetect:
     def edge_detection(self) -> None:
         #Noise reduction
         bfilter = cv2.bilateralFilter(self.img_gray, 11, 17, 17)
-        bfilter = cv2.GaussianBlur(bfilter, (5, 3), 0)
+        bfilter = cv2.GaussianBlur(bfilter, (3, 3), 0)
         #Edge detection
         self.edged = cv2.Canny(bfilter, 30, 200)
 
@@ -50,7 +50,7 @@ class PlateDetect:
     # Function to find contours
     def find_contours(self) -> None:
         # Find contours
-        cnts = cv2.findContours(self.edged.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(self.edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = imutils.grab_contours(cnts)
         cnts = sorted(cnts, key=cv2.contourArea, reverse=True)[:10]
 
@@ -165,11 +165,11 @@ def driver() -> None:
 d = PlateDetect()
 # Scan all images in the input directory
 for filename in os.listdir(input_path):
-    if filename.endswith(".jpg"):
-        print(filename)
-        image_path = input_path + filename
-        result_path = output_path + filename
-        d.detect(image_path)
-        d.save_image(result_path)
+    # if filename.endswith(".jpg"):
+    print(filename)
+    image_path = input_path + filename
+    result_path = output_path + filename
+    d.detect(image_path)
+    d.save_image(result_path)
 
-d.detect('images/test.jpg')
+# d.detect('images/test.jpg')
