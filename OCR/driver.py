@@ -1,7 +1,9 @@
 import os
 import time
 import torch
+import numpy as np
 import pandas as pd
+
 from cnn import ConvNet
 
 # Define colors
@@ -141,6 +143,20 @@ class Driver:
         self.net.show_predictions(num, filename)
         return
 
+    # Function to execute the forward pass (un-labeled data)
+    def forward(self, img:np.ndarray) -> tuple[str, str]:
+        with torch.no_grad():
+            # Convert the img to torch tensor
+            # import cv2
+            # cv2.imshow('Input', img)
+            # cv2.waitKey(0)
+            img = torch.from_numpy(img.reshape(1, 1, 44, 200)).float().to(self.net.gpu)
+            # Forward pass
+            output = self.net.forward(img).to(self.net.cpu)
+            # Convert the output to string
+            ocr, ptype = self.net.output_to_string(output[0])
+        return ocr, ptype
+
 
 # Main function
 def driver_main():
@@ -189,6 +205,7 @@ def driver_main():
                 if valid == '':
                     valid = 'dataset_valid.csv'
                 d.load_valid(valid)
+                continue
 
             # Load train dataset only
             elif choice == '2':
@@ -196,6 +213,7 @@ def driver_main():
                 if filename == '':
                     filename = 'dataset_train.csv'
                 d.load_train(filename)
+                continue
 
             # Load test dataset only
             elif choice == '3':
@@ -203,6 +221,7 @@ def driver_main():
                 if filename == '':
                     filename = 'dataset_test.csv'
                 d.load_test(filename)
+                continue
 
             # Load validation dataset only
             elif choice == '4':
@@ -210,6 +229,7 @@ def driver_main():
                 if filename == '':
                     filename = 'dataset_valid.csv'
                 d.load_valid(filename)
+                continue
 
             # Invalid choice
             else:
@@ -253,6 +273,7 @@ def driver_main():
             learning_rate = float(learning_rate)
 
             d.train(epochs, learning_rate)
+            continue
 
         # Test the network
         elif choice == '3':
@@ -286,6 +307,7 @@ def driver_main():
                 d.save_preds = True
 
             d.test()
+            continue
 
         # Load a network pretrained model
         elif choice == '4':
@@ -293,6 +315,7 @@ def driver_main():
             if load == '':
                 load = 'model.pkl'
             d.load_model(load)
+            continue
 
         # Show some images with their predictions
         elif choice == '5':
@@ -306,6 +329,7 @@ def driver_main():
             num = int(num)
 
             d.show_preds(preds, num)
+            continue
 
         # Exit
         elif choice == '0':
