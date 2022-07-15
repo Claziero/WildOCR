@@ -71,11 +71,13 @@ def driver() -> None:
     plate_detect = PlateDetect('PlateDetector/')
     
     choice = 1
+    nn_loaded = False
     while choice != '0':
         # Get the user input
         print(TEXT_YELLOW + '>> Driver helper. Select the function to run. Type:' + TEXT_RESET)
         print('  1. Load pretrained models of OCR NN and Detector NN.')
         print('  2. Scan an image.')
+        print('  3. Scan a directory.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)   
 
@@ -94,10 +96,24 @@ def driver() -> None:
 
             # Load the Detector NN
             plate_detect.load_from_checkpoint()
+            nn_loaded = True
             continue
 
         # Scan an image
         elif choice == '2':
+            if not nn_loaded:
+                print(TEXT_RED + '>> NNs not loaded.' + TEXT_RESET)
+
+                # Load the OCR NN
+                load = input('Enter the path to the pretrained model for OCR NN [Enter = \"OCR/model.pkl\"]: ')
+                if load == '':
+                    load = 'OCR/model.pkl'
+                cnn_driver.load_model(load)
+
+                # Load the Detector NN
+                plate_detect.load_from_checkpoint()
+                nn_loaded = True
+
             # Get the image path
             print('Taking input images from \"' + input_path + '\" folder.')
             img_path = input('Enter the name of the image [Enter = \"image.jpg\"]: ')
@@ -117,13 +133,12 @@ def driver() -> None:
 
             # Detect the plate
             crop, coords = plate_detect.detect_and_crop(img_array)
-            print(coords)
 
             # If the plate is detected
             if crop is not None:
                 # Process the image
-                cv2.imshow('Image', crop)
-                cv2.waitKey(0)
+                # cv2.imshow('Image', crop)
+                # cv2.waitKey(0)
                 crop = process_image(crop)
 
                 # If the image is processed
@@ -145,7 +160,71 @@ def driver() -> None:
             else:
                 print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
 
-            cv2.destroyAllWindows()
+            # cv2.destroyAllWindows()
+            continue
+
+        # Scan a directory
+        elif choice == '3':
+            if not nn_loaded:
+                print(TEXT_RED + '>> NNs not loaded.' + TEXT_RESET)
+
+                # Load the OCR NN
+                load = input('Enter the path to the pretrained model for OCR NN [Enter = \"OCR/model.pkl\"]: ')
+                if load == '':
+                    load = 'OCR/model.pkl'
+                cnn_driver.load_model(load)
+
+                # Load the Detector NN
+                plate_detect.load_from_checkpoint()
+                nn_loaded = True
+                
+            # Get the directory path
+            print('Taking input images from \"' + input_path + '\" folder.')
+            dir_path = input('Enter the name of the directory [Enter = \".\"]: ')
+            if dir_path == '':
+                dir_path = '.'
+
+            print('Saving output images to \"' + output_path + '\" folder.')
+            save = input('Enter the name of the directory to save images in [Enter = \"{}\" | \"n\" = None]: '.format(dir_path))
+            if save == '':
+                save = dir_path
+            elif save == 'n':
+                save = False
+
+            # Scan the directory
+            for im in os.listdir(os.path.join(input_path, dir_path)):
+                print(im)
+                # Load the image
+                img = cv2.imread(os.path.join(input_path, dir_path, im))
+                img_array = np.asarray(img)
+
+                # Detect the plate
+                crop, coords = plate_detect.detect_and_crop(img_array)
+
+                # If the plate is detected
+                if crop is not None:
+                    # Process the image
+                    crop = process_image(crop)
+
+                    # If the image is processed
+                    if crop is not None:
+                        # Predict the plate
+                        text, ptype = cnn_driver.forward(crop)
+
+                        # If the plate is predicted
+                        if text is not None:
+                            # Print the text
+                            print(TEXT_BLUE + '>> Recognised plate number: ' + text + TEXT_RESET)
+                            print(TEXT_BLUE + '>> Recognised plate type: ' + ptype + TEXT_RESET)
+
+                            # Save the image
+                            if save is not False:
+                                cv2.imwrite(os.path.join(output_path, save, im), crop)
+                        else:
+                            print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
+                else:
+                    print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
+
             continue
             
         # If there's an error

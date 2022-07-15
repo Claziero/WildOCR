@@ -286,9 +286,9 @@ class PlateDetect():
             agnostic_mode = False
         )
 
-        matplotlib.use('TkAgg')
-        plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
-        plt.show()
+        # matplotlib.use('TkAgg')
+        # plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
+        # plt.show()
 
         print(detections['detection_boxes'])
         print(detections['detection_classes'])
