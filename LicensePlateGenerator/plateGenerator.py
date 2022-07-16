@@ -3,7 +3,6 @@ import cv2
 import random
 import random
 import numpy as np
-import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 from math import floor
@@ -412,16 +411,6 @@ def affine_transform(im:Image.Image) -> cv2.Mat:
     M = cv2.getAffineTransform(pts1, pts2)
     color = np.random.randint(0, 255)
     dst = cv2.warpAffine(img, M, (cols, rows), borderValue=(color, color, color))
-    
-    # plt.subplot(121)
-    # plt.imshow(img)
-    # plt.title('Input')
-    
-    # plt.subplot(122)
-    # plt.imshow(dst)
-    # plt.title('Output')
-    
-    # plt.show()
     return dst
 
 # Function to apply perspective transformations to images
@@ -445,16 +434,6 @@ def perspective_transform(im:Image.Image) -> cv2.Mat:
     
     M = cv2.getPerspectiveTransform(pts1, pts2)
     dst = cv2.warpPerspective(img, M, (cols, rows))
-    
-    # plt.subplot(121)
-    # plt.imshow(img)
-    # plt.title('Input')
-    
-    # plt.subplot(122)
-    # plt.imshow(dst)
-    # plt.title('Output')
-    
-    # plt.show()
     return dst
 
 # Driver function

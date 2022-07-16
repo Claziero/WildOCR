@@ -271,28 +271,28 @@ class PlateDetect():
         # detection_classes should be ints.
         detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
 
-        label_id_offset = 1
-        image_np_with_detections = image.copy()
+        # label_id_offset = 1
+        # image_np_with_detections = image.copy()
 
-        viz_utils.visualize_boxes_and_labels_on_image_array(
-            image_np_with_detections,
-            detections['detection_boxes'],
-            detections['detection_classes'] + label_id_offset,
-            detections['detection_scores'],
-            self.category_index,
-            use_normalized_coordinates = True,
-            max_boxes_to_draw = 5,
-            min_score_thresh = .4,
-            agnostic_mode = False
-        )
+        # viz_utils.visualize_boxes_and_labels_on_image_array(
+        #     image_np_with_detections,
+        #     detections['detection_boxes'],
+        #     detections['detection_classes'] + label_id_offset,
+        #     detections['detection_scores'],
+        #     self.category_index,
+        #     use_normalized_coordinates = True,
+        #     max_boxes_to_draw = 5,
+        #     min_score_thresh = .4,
+        #     agnostic_mode = False
+        # )
 
         # matplotlib.use('TkAgg')
         # plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
         # plt.show()
 
-        print(detections['detection_boxes'])
-        print(detections['detection_classes'])
-        print(detections['detection_scores'])
+        # print(detections['detection_boxes'])
+        # print(detections['detection_classes'])
+        # print(detections['detection_scores'])
 
         # Get the coordinates of the plate
         x1 = int(detections['detection_boxes'][0][0] * image.shape[0])

@@ -55,6 +55,29 @@ def process_image(img:cv2.Mat) -> np.ndarray:
 
     return img
 
+# Function to write the OCR string to the image
+def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str) -> cv2.Mat:
+    write_point = (coords[1] - 0, coords[0] - 10)
+
+    result = cv2.putText(img,
+        text = ocr_string,
+        org = write_point,
+        fontFace = cv2.FONT_HERSHEY_SIMPLEX,
+        fontScale = 1,
+        color = (0, 255, 0),
+        thickness = 2,
+        lineType = cv2.LINE_AA)
+
+    result = cv2.rectangle(img,
+        pt1 = (coords[1], coords[0]),
+        pt2 = (coords[3], coords[2]),
+        color = (0, 255, 0),
+        thickness = 3)
+    
+    # cv2.imshow("Result", result)
+    # cv2.waitKey(0)
+    return result
+
 
 # Driver function
 def driver() -> None:
@@ -133,6 +156,7 @@ def driver() -> None:
 
             # Detect the plate
             crop, coords = plate_detect.detect_and_crop(img_array)
+            # print(coords)
 
             # If the plate is detected
             if crop is not None:
@@ -152,9 +176,11 @@ def driver() -> None:
                         print(TEXT_BLUE + '>> Recognised plate number: ' + text + TEXT_RESET)
                         print(TEXT_BLUE + '>> Recognised plate type: ' + ptype + TEXT_RESET)
 
+                        res = write_ocr(img, coords, text)
+
                         # Save the image
                         if save is not False:
-                            cv2.imwrite(output_path + save, crop)
+                            cv2.imwrite(output_path + save, res)
                     else:
                         print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
             else:
@@ -217,9 +243,11 @@ def driver() -> None:
                             print(TEXT_BLUE + '>> Recognised plate number: ' + text + TEXT_RESET)
                             print(TEXT_BLUE + '>> Recognised plate type: ' + ptype + TEXT_RESET)
 
+                            res = write_ocr(img, coords, text)
+
                             # Save the image
                             if save is not False:
-                                cv2.imwrite(os.path.join(output_path, save, im), crop)
+                                cv2.imwrite(os.path.join(output_path, save, im), res)
                         else:
                             print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
                 else:
