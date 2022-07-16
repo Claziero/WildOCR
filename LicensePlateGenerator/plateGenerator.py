@@ -1,7 +1,10 @@
 import os
+import cv2
 import random
 import random
 import numpy as np
+import matplotlib.pyplot as plt
+
 from tqdm import tqdm
 from math import floor
 from perlin_noise import PerlinNoise
@@ -121,7 +124,7 @@ def generate_plate_number(initial_letters:int, central_numbers:int, final_letter
     return plate
 
 # Function to create an image with the given plate
-def generate_plate(plate:str, ptype:str) -> Image:
+def generate_plate(plate:str, ptype:str) -> Image.Image:
     # Car plates
     if ptype == 'auto':
         # Open base image
@@ -296,7 +299,7 @@ def check_plate_number(plate:str, ptype:str) -> bool:
     return False
 
 # Function to create and save a plate
-def create_plate(gray:bool=True, ptype:str='auto') -> None:
+def create_plate(gray:bool=True, ptype:str='auto', aff_t:bool=False) -> None:
     # Generate a random plate number
     seq = get_plate_format(ptype)
     plate = generate_plate_number(seq[0], seq[1], seq[2])
@@ -311,6 +314,11 @@ def create_plate(gray:bool=True, ptype:str='auto') -> None:
     # Convert the image in grayscale if necessary
     if gray:
         img = img.convert('L')
+
+    # Apply affine transformations if necessary
+    if aff_t:
+        img = affine_transform(img)
+        img = Image.fromarray(img)
 
     # Save and close the image
     img.save(output_path + plate + '{}.png'.format(get_suffix(ptype)))
@@ -339,7 +347,7 @@ def generate_noise_image(width:int=1000, height:int=1000) -> np.ndarray:
     return np.array(pic) * 255
 
 # Function to create plates with random noise (gray only)
-def create_noisy_plate(ptype:str='auto', noise:np.ndarray=None) -> None:
+def create_noisy_plate(ptype:str='auto', noise:np.ndarray=None, aff_t:bool=False) -> None:
     # Moto/auto_sp plates have different shape
     if ptype == 'moto' or ptype == 'auto_sp':
         xpix, ypix = moto_image_width, moto_image_height
@@ -367,22 +375,90 @@ def create_noisy_plate(ptype:str='auto', noise:np.ndarray=None) -> None:
     # Convert the image in grayscale
     img = img.convert('L')
 
+    # Apply affine transformations if necessary
+    if aff_t:
+        img = affine_transform(img)
+
     # Add the noise to the image
     noisy = np.asarray(img) + noise_img
     noisy = Image.fromarray(noisy)
     noisy = noisy.convert('L')
 
-    # Save and close the image
+    # Save the image
     noisy.save(output_path + plate + '{}.png'.format(get_suffix(ptype)))
-    img.close()
 
     # Save the plate into a text file
     with open(output_path + 'generated{}.txt'.format(get_suffix(ptype)), 'a+') as f:
         f.write(plate + '\n')
     return
 
+# Function to apply affine transformations to images
+def affine_transform(im:Image.Image) -> cv2.Mat:
+    img = np.asarray(im)
+    rows, cols = img.shape[0], img.shape[1]
+
+    p1 = [10, 10]
+    p2 = [10, rows - 10]
+    p3 = [cols - 10, 10]
+    pts1 = np.float32([p1, p2, p3])
+    
+    delta = 8
+    rand = np.random.randint(-delta, delta, 6)
+    p1r = [p1[0] + rand[0], p1[1] + rand[1]]
+    p2r = [p2[0] + rand[2], p2[1] + rand[3]]
+    p3r = [p3[0] + rand[4], p3[1] + rand[5]]
+    pts2 = np.float32([p1r, p2r, p3r])
+    
+    M = cv2.getAffineTransform(pts1, pts2)
+    color = np.random.randint(0, 255)
+    dst = cv2.warpAffine(img, M, (cols, rows), borderValue=(color, color, color))
+    
+    # plt.subplot(121)
+    # plt.imshow(img)
+    # plt.title('Input')
+    
+    # plt.subplot(122)
+    # plt.imshow(dst)
+    # plt.title('Output')
+    
+    # plt.show()
+    return dst
+
+# Function to apply perspective transformations to images
+def perspective_transform(im:Image.Image) -> cv2.Mat:
+    img = np.asarray(im)
+    rows, cols = img.shape[0], img.shape[1]
+
+    p1 = [10, 10]
+    p2 = [10, rows - 10]
+    p3 = [cols - 10, 10]
+    p4 = [cols - 10, rows - 10]
+    pts1 = np.float32([p1, p2, p3, p4])
+    
+    delta = 8
+    rand = np.random.randint(-delta, delta, 8)
+    p1r = [p1[0] + rand[0], p1[1] + rand[1]]
+    p2r = [p2[0] + rand[2], p2[1] + rand[3]]
+    p3r = [p3[0] + rand[4], p3[1] + rand[5]]
+    p4r = [p4[0] + rand[6], p4[1] + rand[7]]
+    pts2 = np.float32([p1r, p2r, p3r, p4r])
+    
+    M = cv2.getPerspectiveTransform(pts1, pts2)
+    dst = cv2.warpPerspective(img, M, (cols, rows))
+    
+    # plt.subplot(121)
+    # plt.imshow(img)
+    # plt.title('Input')
+    
+    # plt.subplot(122)
+    # plt.imshow(dst)
+    # plt.title('Output')
+    
+    # plt.show()
+    return dst
+
 # Driver function
-def main(nplates:int, gray:bool, perc_noise:int, ptype:str, new_noise:int=1000) -> None:
+def main(nplates:int, gray:bool, perc_noise:int, ptype:str, aff_t:int, new_noise:int=1000) -> None:
     # Create the output directory if necessary
     if not os.path.exists(output_path):
         os.makedirs(output_path)
@@ -403,6 +479,9 @@ def main(nplates:int, gray:bool, perc_noise:int, ptype:str, new_noise:int=1000) 
         # Generate "n" random plates
         noisy = int(n * perc_noise / 100)
         p = PLATE_TYPES[t] if n != nplates else ptype
+        affines = int(n * aff_t / 100)
+        affines_noisy = int(affines * perc_noise / 100)
+        affines_normal = affines - affines_noisy
 
         if n - noisy:
             print(TEXT_GREEN 
@@ -410,7 +489,8 @@ def main(nplates:int, gray:bool, perc_noise:int, ptype:str, new_noise:int=1000) 
                 'GRAY' if gray == True else 'COLOR', p)
                 + TEXT_RESET)
             for _ in tqdm(range(n - noisy)):
-                create_plate(gray=gray, ptype=p)
+                create_plate(gray=gray, ptype=p, aff_t=affines_normal>0)
+                affines_normal -= 1
         
         if noisy:
             print(TEXT_GREEN 
@@ -420,7 +500,8 @@ def main(nplates:int, gray:bool, perc_noise:int, ptype:str, new_noise:int=1000) 
                 # Every "new_noise" iterations regenerate the noise image
                 if i % new_noise == 0:
                     noise = generate_noise_image()
-                create_noisy_plate(ptype=p, noise=noise)
+                create_noisy_plate(ptype=p, noise=noise, aff_t=affines_noisy>0)
+                affines_noisy -= 1
 
     return
 
@@ -507,6 +588,11 @@ def driver_main():
             nplates = 1000
         nplates = int(nplates)
 
+        aff_t = input('Enter the percentage of plates with affine transformations [Enter = \"75\"]: ')
+        if aff_t == '':
+            aff_t = 75
+        aff_t = int(aff_t)
+
         # Generate mixed normal/noisy images
         if choice == '1':
             perc = input('Enter the percentage of noisy images to generate [Enter = \"50%\"]: ')
@@ -519,11 +605,11 @@ def driver_main():
                 new_noise = 1000
             new_noise = int(new_noise)            
 
-            main(nplates=nplates, gray=True, perc_noise=perc, ptype=ptype, new_noise=new_noise)
+            main(nplates=nplates, gray=True, perc_noise=perc, ptype=ptype, new_noise=new_noise, aff_t=aff_t)
 
         # Generate normal images only
         elif choice == '2':
-            main(nplates=nplates, gray=True, perc_noise=0, ptype=ptype)
+            main(nplates=nplates, gray=True, perc_noise=0, ptype=ptype, aff_t=aff_t)
 
         # Generate noisy images only
         elif choice == '3':
@@ -532,11 +618,11 @@ def driver_main():
                 new_noise = 1000
             new_noise = int(new_noise)
 
-            main(nplates=nplates, gray=True, perc_noise=100, ptype=ptype, new_noise=new_noise)
+            main(nplates=nplates, gray=True, perc_noise=100, ptype=ptype, new_noise=new_noise, aff_t=aff_t)
 
         # Generate coloured images
         elif choice == '4':
-            main(nplates=nplates, gray=False, perc_noise=0, ptype=ptype)
+            main(nplates=nplates, gray=False, perc_noise=0, ptype=ptype, aff_t=aff_t)
 
         # Invalid input
         else:
