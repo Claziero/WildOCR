@@ -28,8 +28,9 @@ import torch
 import numpy as np
 import pandas as pd
 import torch.nn as nn
-from math import ceil, sqrt
 import matplotlib.pyplot as plt
+
+from math import ceil, sqrt
 from datasetGenerator import reverse_moto
 
 # Define colors
@@ -55,8 +56,8 @@ class ConvNet(nn.Module):
 
         # Network parameters
         self.last_bits_count = 8
-        self.l1_out_ch = 5
-        self.l2_out_ch = 10
+        self.l1_out_ch = 7
+        self.l2_out_ch = 15
         self.fc1_in_dim = self.l2_out_ch * 9 * 48
         self.fc1_out_dim = self.fc1_in_dim // 2
         self.fc2_out_dim = self.fc1_out_dim // 2
@@ -239,7 +240,7 @@ class ConvNet(nn.Module):
         return gap
 
     # Function to convert the network output to a string
-    def output_to_string(self, net_output:torch.Tensor) -> str:
+    def output_to_string(self, net_output:torch.Tensor) -> tuple[str, str]:
         # Convert the output to a string
         out_string = ''
 
@@ -247,13 +248,13 @@ class ConvNet(nn.Module):
         ptype = np.argmax(net_output[-8:])
         for i in range(7):
             # If plate type has only 5 characters, break the loop
-            if i > 4 and ptype != 0 and ptype != 1 and ptype != 8:
+            if i > 4 and ptype != 0 and ptype != 1 and ptype != 7:
                 break
 
             out_index = np.argmax(net_output[32 * i:32 * (i + 1)])
             out_string += chr(out_index + 65 + self.calculate_gap(out_index))
 
-        return out_string
+        return out_string, self.plate_type_to_string(ptype)
 
     # Function to convert the plate type into a string
     def plate_type_to_string(self, ptype:int) -> str:
@@ -281,13 +282,9 @@ class ConvNet(nn.Module):
         f = open(filename, 'a+')
         
         # Convert the output to a string
-        out_string = self.output_to_string(Y_pred)
-        test_string = self.output_to_string(Y_test)
+        out_string, out_ptype = self.output_to_string(Y_pred)
+        test_string, sol_ptype = self.output_to_string(Y_test)
         X_test = str(np.array(X_test).flatten().tolist())[1:-1]
-
-        # Get the type prediction and truth
-        out_ptype = self.plate_type_to_string(np.argmax(Y_pred[-self.last_bits_count:]))
-        sol_ptype = self.plate_type_to_string(np.argmax(Y_test[-self.last_bits_count:]))
 
         # Write the output to the file
         f.write(X_test + ',' + out_string + ',' + out_ptype 

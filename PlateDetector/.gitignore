@@ -1,5 +1,3 @@
-images/
-output/
+Tensorflow/
+nvvm/
 __pycache__/
-imgs/
-outp/
