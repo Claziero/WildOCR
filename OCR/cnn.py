@@ -56,7 +56,7 @@ class ConvNet(nn.Module):
 
         # Network parameters
         self.last_bits_count = 8
-        self.l1_out_ch = 7
+        self.l1_out_ch = 8
         self.l2_out_ch = 15
         self.fc1_in_dim = self.l2_out_ch * 9 * 48
         self.fc1_out_dim = self.fc1_in_dim // 2
