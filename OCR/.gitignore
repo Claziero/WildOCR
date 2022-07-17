@@ -1,4 +1,4 @@
 *.pkl
 *.csv
-graphs.png
+*.png
 __pycache__/
