@@ -492,25 +492,25 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
 
     # Convert the image in cv2 format
     img = np.asarray(plate)
-    cv2.imshow('img', img)
+    # cv2.imshow('img', img)
 
     # Remove shadows from the image
     # img = remove_shadows(img)
     # cv2.imshow('rm_shdw', img)
 
-    print(np.mean(img))
+    # print(np.mean(img))
 
     # If the image is too dark, brighten it
     if np.mean(img) < 120:
-        print(TEXT_YELLOW + 'brighten' + TEXT_RESET)
+        # print(TEXT_YELLOW + 'brighten' + TEXT_RESET)
         img = cv2.convertScaleAbs(img, alpha=1.7)
-        cv2.imshow('bright', img)
+        # cv2.imshow('bright', img)
 
     # If the image is too bright, darken it
     elif np.mean(img) > 160:
-        print(TEXT_YELLOW + 'darken' + TEXT_RESET)
+        # print(TEXT_YELLOW + 'darken' + TEXT_RESET)
         img = cv2.convertScaleAbs(img, alpha=0.7)
-        cv2.imshow('dark', img)
+        # cv2.imshow('dark', img)
 
     # Apply thresholding to the image
     img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
@@ -519,7 +519,7 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8))
 
-    cv2.imshow('Processed', img)
+    # cv2.imshow('Processed', img)
 
     # Find the contours of the image
     contours = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
@@ -537,8 +537,8 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
         # Get the bounding rectangle
         x, y, w, h = cv2.boundingRect(cnt)
         # Show the bounding rectangle
-        cv2.rectangle(r, (x, y), (x + w, y + h), (0, 255, 0), 1)
-        cv2.imshow('Contours', r)
+        # cv2.rectangle(r, (x, y), (x + w, y + h), (0, 255, 0), 1)
+        # cv2.imshow('Contours', r)
 
         # If the area is too small or too large, ignore it
         if w * h < 100 or w * h > 900:
@@ -593,15 +593,15 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
         characters.append(pos[0])
 
     # Plot found characters
-    matplotlib.use('TkAgg')
-    for i, char in enumerate(characters):
-        plt.subplot(1, len(characters), i + 1)
-        plt.imshow(char, cmap='gray')
-        plt.axis('off')
-    plt.show()
+    # matplotlib.use('TkAgg')
+    # for i, char in enumerate(characters):
+    #     plt.subplot(1, len(characters), i + 1)
+    #     plt.imshow(char, cmap='gray')
+    #     plt.axis('off')
+    # plt.show()
 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     
     return characters
 

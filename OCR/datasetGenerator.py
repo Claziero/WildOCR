@@ -60,10 +60,10 @@ def generate_dataset_csv(path:str, filename:str) -> None:
 
     # Get all the images in the path
     dirs = os.listdir(path)
-    for dir in dirs:
+    for dir in tqdm(dirs):
         # Get all the images in the directory
         images = os.listdir(os.path.join(path, dir))
-        for elem in tqdm(images):
+        for elem in images:
             if elem.endswith('.png'):
                 img = Image.open(os.path.join(path, dir, elem))
                 img = np.array(img)

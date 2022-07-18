@@ -108,7 +108,7 @@ class ConvNet(nn.Module):
             acc = self.validate_net(X_valid, Y_valid)
 
             # Stop the training if accuracy reaches 99%
-            if acc >= 99.9: 
+            if acc >= 99.5:
                 # Save the model as checkpoint
                 self.save('ckpt-{}.pkl'.format(epoch+1))
                 break
