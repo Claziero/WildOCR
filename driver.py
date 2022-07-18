@@ -21,7 +21,7 @@ TEXT_BLUE = '\033[94m'
 # Dimension constants
 # Car plates are 200x44 pixels
 auto_image_width, auto_image_height = 200, 44
-auto_min_ar, auto_max_ar = 2, 6 # Correct AR = 4.54
+auto_min_ar, auto_max_ar = 1.5, 6 # Correct AR = 4.54
 
 # Moto plates are 106x83 pixels
 moto_image_width, moto_image_height = 106, 83
@@ -91,8 +91,8 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
     # If the plate is detected
     if crop is not None:
         # Process the image
-        cv2.imshow('Image', crop)
-        cv2.waitKey(0)
+        # cv2.imshow('Image', crop)
+        # cv2.waitKey(0)
         crop = process_image(crop)
 
         # If the image has been processed

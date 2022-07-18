@@ -443,13 +443,13 @@ def perspective_transform(im:Image.Image) -> cv2.Mat:
 def remove_shadows(im:cv2.Mat) -> cv2.Mat:
     # Dilate and blur the image
     dilated_img = cv2.dilate(im, np.ones((11, 11), np.uint8))
-    cv2.imshow('dilated', dilated_img)
+    # cv2.imshow('dilated', dilated_img)
     bg_img = cv2.medianBlur(dilated_img, 3)
-    cv2.imshow('bg', bg_img)
+    # cv2.imshow('bg', bg_img)
 
     # Subtract the blurred image from the original image
     diff_img = 255 - cv2.absdiff(im, bg_img)
-    cv2.imshow('diff', diff_img)
+    # cv2.imshow('diff', diff_img)
 
     # Normalize the image
     norm_img = diff_img.copy()
@@ -461,9 +461,9 @@ def remove_shadows(im:cv2.Mat) -> cv2.Mat:
         norm_type = cv2.NORM_MINMAX,
         dtype = cv2.CV_8UC1
     )
-    cv2.imshow('norm', norm_img)
+    # cv2.imshow('norm', norm_img)
 
-    _, thr_img = cv2.threshold(norm_img, 230, 0, cv2.THRESH_TRUNC)
+    _, thr_img = cv2.threshold(norm_img, 220, 0, cv2.THRESH_TRUNC)
     cv2.normalize(
         src = thr_img, 
         dst = thr_img,
@@ -472,17 +472,18 @@ def remove_shadows(im:cv2.Mat) -> cv2.Mat:
         norm_type = cv2.NORM_MINMAX,
         dtype = cv2.CV_8UC1
     )
-    cv2.imshow('thr', thr_img)
+    # cv2.imshow('thr', thr_img)
     
     return thr_img
 
 # Function to remove shadows from images
 def remove_shadows2(im:cv2.Mat) -> cv2.Mat:
     blur = cv2.medianBlur(im, 3)
-    cv2.imshow('blur', blur)
+    # cv2.imshow('blur', blur)
 
     th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
     return th
+
 
 # Function to extract single characters from the plate 
 def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
@@ -494,8 +495,22 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     cv2.imshow('img', img)
 
     # Remove shadows from the image
-    img = remove_shadows(img)
-    cv2.imshow('rm_shdw', img)
+    # img = remove_shadows(img)
+    # cv2.imshow('rm_shdw', img)
+
+    print(np.mean(img))
+
+    # If the image is too dark, brighten it
+    if np.mean(img) < 120:
+        print(TEXT_YELLOW + 'brighten' + TEXT_RESET)
+        img = cv2.convertScaleAbs(img, alpha=1.7)
+        cv2.imshow('bright', img)
+
+    # If the image is too bright, darken it
+    elif np.mean(img) > 160:
+        print(TEXT_YELLOW + 'darken' + TEXT_RESET)
+        img = cv2.convertScaleAbs(img, alpha=0.7)
+        cv2.imshow('dark', img)
 
     # Apply thresholding to the image
     img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
@@ -517,12 +532,13 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     positions = []
 
     # For each contour, extract the character
+    r = img.copy()
     for cnt in contours:
         # Get the bounding rectangle
         x, y, w, h = cv2.boundingRect(cnt)
         # Show the bounding rectangle
-        # cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 1)
-        # cv2.imshow('Contours', img)
+        cv2.rectangle(r, (x, y), (x + w, y + h), (0, 255, 0), 1)
+        cv2.imshow('Contours', r)
 
         # If the area is too small or too large, ignore it
         if w * h < 100 or w * h > 900:
@@ -554,23 +570,23 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     positions = sorted(positions, key=lambda x: x[1]) 
     
     # Remove unwanted characters from the list
-    pops = True
-    while len(positions) > 7 and pops:
-        # Remove next element if it's not a character
-        for i in range(len(positions) - 1):
-            # If the x of the next element is greater than the x of the current element
-            # and the y of the next element is greater than the y of the current element
-            # and the width of the next element is less than the width of the current element
-            # and the height of the next element is less than the height of the current element
-            if positions[i + 1][1] > positions[i][1]\
-                and positions[i + 1][2] > positions[i][2]\
-                and positions[i + 1][3] < positions[i][3]\
-                and positions[i + 1][4] < positions[i][4]:
-                # Remove the next element
-                positions.pop(i + 1)
-                print('del')
-                break
-        pops = False
+    # pops = True
+    # while len(positions) > 7 and pops:
+    #     # Remove next element if it's not a character
+    #     for i in range(len(positions) - 1):
+    #         # If the x of the next element is greater than the x of the current element
+    #         # and the y of the next element is greater than the y of the current element
+    #         # and the width of the next element is less than the width of the current element
+    #         # and the height of the next element is less than the height of the current element
+    #         if positions[i + 1][1] > positions[i][1]\
+    #             and positions[i + 1][2] > positions[i][2]\
+    #             and positions[i + 1][3] < positions[i][3]\
+    #             and positions[i + 1][4] < positions[i][4]:
+    #             # Remove the next element
+    #             positions.pop(i + 1)
+    #             # print('del')
+    #             break
+    #     pops = False
 
     # Add the characters to the list
     for pos in positions:

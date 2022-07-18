@@ -108,7 +108,7 @@ class ConvNet(nn.Module):
             acc = self.validate_net(X_valid, Y_valid)
 
             # Stop the training if accuracy reaches 99%
-            if acc >= 0.99: 
+            if acc >= 99.9: 
                 # Save the model as checkpoint
                 self.save('ckpt-{}.pkl'.format(epoch+1))
                 break
@@ -121,7 +121,7 @@ class ConvNet(nn.Module):
         return
 
     # Function to validate the network
-    def validate_net(self, X_valid:pd.DataFrame, Y_valid:pd.DataFrame) -> None:
+    def validate_net(self, X_valid:pd.DataFrame, Y_valid:pd.DataFrame) -> float:
         # Validate the network
         self.eval()
         with torch.no_grad():
@@ -146,7 +146,7 @@ class ConvNet(nn.Module):
             self.valid_accuracy_array.append(accuracy)
 
         print(TEXT_BLUE + 'Accuracy of the network on the validation set: {:.2f}%'.format(accuracy) + TEXT_RESET)
-        return
+        return accuracy
 
     # Function to test the network
     def test_net(self, X_test:pd.DataFrame, Y_test:pd.DataFrame, save_preds:str=None) -> float:
