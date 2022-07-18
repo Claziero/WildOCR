@@ -3,6 +3,7 @@ import cv2
 import random
 import random
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 
 from tqdm import tqdm
@@ -438,6 +439,51 @@ def perspective_transform(im:Image.Image) -> cv2.Mat:
     dst = cv2.warpPerspective(img, M, (cols, rows))
     return dst
 
+# Function to remove shadows from images
+def remove_shadows(im:cv2.Mat) -> cv2.Mat:
+    # Dilate and blur the image
+    dilated_img = cv2.dilate(im, np.ones((11, 11), np.uint8))
+    cv2.imshow('dilated', dilated_img)
+    bg_img = cv2.medianBlur(dilated_img, 3)
+    cv2.imshow('bg', bg_img)
+
+    # Subtract the blurred image from the original image
+    diff_img = 255 - cv2.absdiff(im, bg_img)
+    cv2.imshow('diff', diff_img)
+
+    # Normalize the image
+    norm_img = diff_img.copy()
+    cv2.normalize(
+        src = diff_img,
+        dst = norm_img,
+        alpha = 0,
+        beta = 255,
+        norm_type = cv2.NORM_MINMAX,
+        dtype = cv2.CV_8UC1
+    )
+    cv2.imshow('norm', norm_img)
+
+    _, thr_img = cv2.threshold(norm_img, 230, 0, cv2.THRESH_TRUNC)
+    cv2.normalize(
+        src = thr_img, 
+        dst = thr_img,
+        alpha = 0,
+        beta = 255,
+        norm_type = cv2.NORM_MINMAX,
+        dtype = cv2.CV_8UC1
+    )
+    cv2.imshow('thr', thr_img)
+    
+    return thr_img
+
+# Function to remove shadows from images
+def remove_shadows2(im:cv2.Mat) -> cv2.Mat:
+    blur = cv2.medianBlur(im, 3)
+    cv2.imshow('blur', blur)
+
+    th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    return th
+
 # Function to extract single characters from the plate 
 def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     # Add a white border to the image
@@ -445,7 +491,11 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
 
     # Convert the image in cv2 format
     img = np.asarray(plate)
-    # cv2.imshow('img', img)
+    cv2.imshow('img', img)
+
+    # Remove shadows from the image
+    img = remove_shadows(img)
+    cv2.imshow('rm_shdw', img)
 
     # Apply thresholding to the image
     img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
@@ -454,7 +504,7 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8))
 
-    # cv2.imshow('Processed', img)
+    cv2.imshow('Processed', img)
 
     # Find the contours of the image
     contours = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
@@ -470,15 +520,18 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     for cnt in contours:
         # Get the bounding rectangle
         x, y, w, h = cv2.boundingRect(cnt)
+        # Show the bounding rectangle
+        # cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 1)
+        # cv2.imshow('Contours', img)
 
         # If the area is too small or too large, ignore it
-        if w * h < 200 or w * h > 900:
+        if w * h < 100 or w * h > 900:
             continue
         
         # Extract the character from the image
         char = img[y:y+h, x:x+w]
 
-        # Exclude characters with less than 10% of black pixels
+        # Exclude characters with less than 15% or more than 70% of black pixels
         s = np.sum(char) / (w * h * 255)
         if s > 0.85 or s < 0.3:
             continue
@@ -515,22 +568,24 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
                 and positions[i + 1][4] < positions[i][4]:
                 # Remove the next element
                 positions.pop(i + 1)
-                # print('del')
+                print('del')
                 break
         pops = False
 
     # Add the characters to the list
     for pos in positions:
-        # print(pos[3] * pos[4])
         characters.append(pos[0])
 
     # Plot found characters
-    # for i, char in enumerate(characters):
-    #     plt.subplot(1, len(characters), i + 1)
-    #     plt.imshow(char, cmap='gray')
-    #     plt.axis('off')
-    # plt.show()
-    # cv2.destroyAllWindows()
+    matplotlib.use('TkAgg')
+    for i, char in enumerate(characters):
+        plt.subplot(1, len(characters), i + 1)
+        plt.imshow(char, cmap='gray')
+        plt.axis('off')
+    plt.show()
+
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     
     return characters
 

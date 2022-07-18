@@ -4,8 +4,12 @@ import sys
 import numpy as np
 
 sys.path.insert(0, './OCR')
+sys.path.insert(0, './LicensePlateGenerator')
+
+from PIL import Image
 from OCR.driver import Driver
 from PlateDetector.detect import PlateDetect
+from LicensePlateGenerator.plateGenerator import extract_characters
 
 # Define colors
 TEXT_RESET = '\033[0m'
@@ -78,6 +82,47 @@ def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str) -> cv2.Mat:
     # cv2.waitKey(0)
     return result
 
+# Function to scan an image
+def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndarray, save:str) -> None:
+    # Detect the plate
+    crop, coords = pd.detect_and_crop(img_array)
+    print(coords)
+
+    # If the plate is detected
+    if crop is not None:
+        # Process the image
+        cv2.imshow('Image', crop)
+        cv2.waitKey(0)
+        crop = process_image(crop)
+
+        # If the image has been processed
+        if crop is not None:
+            crop = Image.fromarray(crop)
+            
+            # Extract single characters from the image
+            chars = extract_characters(crop)
+
+            # Predict all characters
+            ocr = ''
+            for char in chars:
+                ocr += cnn_driver.forward(char)
+
+            # If the plate is predicted
+            if ocr:
+                # Print the text
+                print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
+                res = write_ocr(img, coords, ocr)
+
+                # Save the image
+                if save is not False:
+                    cv2.imwrite(save, res)
+            else:
+                print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
+    else:
+        print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
+
+    # cv2.destroyAllWindows()
+    return
 
 # Driver function
 def driver() -> None:
@@ -154,39 +199,9 @@ def driver() -> None:
             img = cv2.imread(input_path + img_path)
             img_array = np.asarray(img)
 
-            # Detect the plate
-            crop, coords = plate_detect.detect_and_crop(img_array)
-            # print(coords)
-
-            # If the plate is detected
-            if crop is not None:
-                # Process the image
-                # cv2.imshow('Image', crop)
-                # cv2.waitKey(0)
-                crop = process_image(crop)
-
-                # If the image is processed
-                if crop is not None:
-                    # Predict the plate
-                    text, ptype = cnn_driver.forward(crop)
-
-                    # If the plate is predicted
-                    if text is not None:
-                        # Print the text
-                        print(TEXT_BLUE + '>> Recognised plate number: ' + text + TEXT_RESET)
-                        print(TEXT_BLUE + '>> Recognised plate type: ' + ptype + TEXT_RESET)
-
-                        res = write_ocr(img, coords, text)
-
-                        # Save the image
-                        if save is not False:
-                            cv2.imwrite(output_path + save, res)
-                    else:
-                        print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
-            else:
-                print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
-
-            # cv2.destroyAllWindows()
+            if save != False: save_name = os.path.join(output_path, save)
+            else: save_name = False
+            scan_image(cnn_driver, plate_detect, img, img_array, save_name)
             continue
 
         # Scan a directory
@@ -219,39 +234,16 @@ def driver() -> None:
 
             # Scan the directory
             for im in os.listdir(os.path.join(input_path, dir_path)):
-                print(im)
+                img_name = os.path.join(input_path, dir_path, im)
+                print('Scanning image \"' + img_name + '\" ...')
+
                 # Load the image
-                img = cv2.imread(os.path.join(input_path, dir_path, im))
+                img = cv2.imread(img_name)
                 img_array = np.asarray(img)
 
-                # Detect the plate
-                crop, coords = plate_detect.detect_and_crop(img_array)
-
-                # If the plate is detected
-                if crop is not None:
-                    # Process the image
-                    crop = process_image(crop)
-
-                    # If the image is processed
-                    if crop is not None:
-                        # Predict the plate
-                        text, ptype = cnn_driver.forward(crop)
-
-                        # If the plate is predicted
-                        if text is not None:
-                            # Print the text
-                            print(TEXT_BLUE + '>> Recognised plate number: ' + text + TEXT_RESET)
-                            print(TEXT_BLUE + '>> Recognised plate type: ' + ptype + TEXT_RESET)
-
-                            res = write_ocr(img, coords, text)
-
-                            # Save the image
-                            if save is not False:
-                                cv2.imwrite(os.path.join(output_path, save, im), res)
-                        else:
-                            print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
-                else:
-                    print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
+                if save != False: save_name = os.path.join(output_path, save, im)
+                else: save_name = False
+                scan_image(cnn_driver, plate_detect, img, img_array, save_name)
 
             continue
             
