@@ -211,17 +211,17 @@ class ConvNet(nn.Module):
         return gap
 
     # Function to convert the network output to a string
-    def output_to_string(self, net_output:torch.Tensor) -> str:
-        pred = np.argmax(net_output[-32:])
-        return chr(pred + 65 + self.calculate_gap(pred))
+    def output_to_string(self, net_output:torch.Tensor) -> tuple[str, float]:
+        pred = np.argmax(net_output)
+        return chr(pred + 65 + self.calculate_gap(pred)), net_output[pred]
 
     # Function to save the predictions in string format
     def save_predictions(self, X_test:np.ndarray, Y_pred:torch.Tensor, Y_test:np.ndarray, filename:str) -> None:
         f = open(filename, 'a+')
         
         # Convert the output to a string
-        out_string = self.output_to_string(Y_pred)
-        test_string = self.output_to_string(Y_test)
+        out_string = self.output_to_string(Y_pred)[0]
+        test_string = self.output_to_string(Y_test)[0]
         X_test = str(np.array(X_test).flatten().tolist())[1:-1].replace(' ', '').strip()
 
         # Write the output to the file

@@ -486,7 +486,7 @@ def remove_shadows2(im:cv2.Mat) -> cv2.Mat:
 
 
 # Function to extract single characters from the plate 
-def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
+def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]:
     # Add a white border to the image
     plate = ImageOps.expand(plate, border=2, fill='white')
 
@@ -495,8 +495,9 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     # cv2.imshow('img', img)
 
     # Remove shadows from the image
-    # img = remove_shadows(img)
-    # cv2.imshow('rm_shdw', img)
+    if rm_shdw:
+        img = remove_shadows(img)
+        # cv2.imshow('rm_shdw', img)
 
     # print(np.mean(img))
 
@@ -516,7 +517,7 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
     img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
 
     # Apply morphological transformations to the image
-    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((1, 1), np.uint8))
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8))
 
     # cv2.imshow('Processed', img)
@@ -547,9 +548,9 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
         # Extract the character from the image
         char = img[y:y+h, x:x+w]
 
-        # Exclude characters with less than 15% or more than 70% of black pixels
+        # Exclude characters with less than 15% or more than 60% of black pixels
         s = np.sum(char) / (w * h * 255)
-        if s > 0.85 or s < 0.3:
+        if s > 0.85 or s < 0.4:
             continue
 
         # Resize the character to a fixed size
@@ -568,25 +569,6 @@ def extract_characters(plate:Image.Image) -> list[cv2.Mat]:
 
     # Sort the characters by x position
     positions = sorted(positions, key=lambda x: x[1]) 
-    
-    # Remove unwanted characters from the list
-    # pops = True
-    # while len(positions) > 7 and pops:
-    #     # Remove next element if it's not a character
-    #     for i in range(len(positions) - 1):
-    #         # If the x of the next element is greater than the x of the current element
-    #         # and the y of the next element is greater than the y of the current element
-    #         # and the width of the next element is less than the width of the current element
-    #         # and the height of the next element is less than the height of the current element
-    #         if positions[i + 1][1] > positions[i][1]\
-    #             and positions[i + 1][2] > positions[i][2]\
-    #             and positions[i + 1][3] < positions[i][3]\
-    #             and positions[i + 1][4] < positions[i][4]:
-    #             # Remove the next element
-    #             positions.pop(i + 1)
-    #             # print('del')
-    #             break
-    #     pops = False
 
     # Add the characters to the list
     for pos in positions:

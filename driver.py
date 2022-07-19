@@ -36,8 +36,8 @@ output_path = data_path + 'output/'
 def process_image(img:cv2.Mat) -> np.ndarray:
     # Check the image dimensions
     img_ar = img.shape[1] / img.shape[0]
-    print('Image dimensions: ' + str(img.shape[1]) + 'x' + str(img.shape[0]))
-    print('Image aspect ratio: ' + str(img_ar))
+    # print('Image dimensions: ' + str(img.shape[1]) + 'x' + str(img.shape[0]))
+    # print('Image aspect ratio: ' + str(img_ar))
 
     # If it's a car plate, resize it to the correct dimensions
     if img_ar >= auto_min_ar and img_ar <= auto_max_ar:
@@ -86,7 +86,7 @@ def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str) -> cv2.Mat:
 def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndarray, save:str) -> None:
     # Detect the plate
     crop, coords = pd.detect_and_crop(img_array)
-    print(coords)
+    # print(coords)
 
     # If the plate is detected
     if crop is not None:
@@ -102,13 +102,66 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
             # Extract single characters from the image
             chars = extract_characters(crop)
 
+            # If there are less than 7 characters, retry the scanning using remove_shadows function
+            if len(chars) < 7:
+                # Extract single characters from the image
+                chars = extract_characters(crop, True)
+
+                # If there are less than 7 characters recognized, the plate is not valid
+                if len(chars) < 7:
+                    print(TEXT_RED + '>> Recognised only {} characters out of 7.'.format(len(chars)) + TEXT_RESET)
+                    return
+
             # Predict all characters
             ocr = ''
+            confidence = []
             for char in chars:
-                ocr += cnn_driver.forward(char)
+                ch, cd = cnn_driver.forward(char)
+                ocr += ch
+                confidence.append(cd)
 
             # If the plate is predicted
             if ocr:
+                # If there are more than 7 characters recognized, check the first 2 characters
+                # If the first 2 characters are numbers, remove them
+                index = 0
+                for _ in range(2):
+                    if len(ocr) > 7 and ocr[index].isdecimal():
+                        ocr = ocr[1:]
+                        confidence = np.delete(confidence, index)
+                    else:
+                        index = 1
+
+                # Check if there are at least 3 numbers in sequence
+                index = 2
+                for _ in range(3):
+                    if len(ocr) > 7:
+                        if ocr[index].isdecimal():
+                            # No letters found
+                            if ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
+                                break
+                            # Remove letters in position index + 1
+                            elif not ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
+                                ocr = ocr[:index + 1] + ocr[index + 2:]
+                                confidence = np.delete(confidence, index + 1)
+                                continue
+                            # Remove letters in position index + 2
+                            elif ocr[index + 1].isdecimal() and not ocr[index + 2].isdecimal():
+                                ocr = ocr[:index + 2] + ocr[index + 3:]
+                                confidence = np.delete(confidence, index + 2)
+                                continue
+                        # Remove letter in position index
+                        elif not ocr[index].isdecimal() and ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
+                            ocr = ocr[:index] + ocr[index + 1:]
+                            confidence = np.delete(confidence, index)
+                            continue                                
+
+                # If there are more than 7 characters recognized, remove those with the lowest confidence
+                while len(ocr) > 7:
+                    min = np.argmin(confidence)
+                    confidence = np.delete(confidence, min)
+                    ocr = ocr[:min] + ocr[min+1:]
+
                 # Print the text
                 print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
                 res = write_ocr(img, coords, ocr)
@@ -120,8 +173,7 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
                 print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
     else:
         print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
-
-    # cv2.destroyAllWindows()
+        
     return
 
 # Driver function

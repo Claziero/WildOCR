@@ -144,18 +144,15 @@ class Driver:
         return
 
     # Function to execute the forward pass (un-labeled data)
-    def forward(self, img:np.ndarray) -> str:
+    def forward(self, img:np.ndarray) -> tuple[str, float]:
         with torch.no_grad():
             # Convert the img to torch tensor
-            # import cv2
-            # cv2.imshow('Input', img)
-            # cv2.waitKey(0)
             img = torch.from_numpy(img.reshape(1, 1, 40, 20)).float().to(self.net.gpu)
             # Forward pass
             output = self.net.forward(img).to(self.net.cpu)
             # Convert the output to string
-            ocr = self.net.output_to_string(output[0])
-        return ocr
+            ocr, cd = self.net.output_to_string(output[0])
+        return ocr, cd
 
 
 # Main function
