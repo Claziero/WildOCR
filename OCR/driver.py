@@ -259,14 +259,14 @@ def driver_main():
                 d.save_model_path = save
                 d.save_model = True
 
-            epochs = input('Enter the number of epochs to train [Enter = \"3\"]: ')
+            epochs = input('Enter the number of epochs to train [Enter = \"30\"]: ')
             if epochs == '':
-                epochs = 3
+                epochs = 30
             epochs = int(epochs)
 
-            learning_rate = input('Enter the learning rate [Enter = \"0.001\"]: ')
+            learning_rate = input('Enter the learning rate [Enter = \"0.0001\"]: ')
             if learning_rate == '':
-                learning_rate = 0.001
+                learning_rate = 0.0001
             learning_rate = float(learning_rate)
 
             d.train(epochs, learning_rate)

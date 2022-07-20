@@ -47,7 +47,7 @@ def process_image(img:cv2.Mat) -> np.ndarray:
     # If it's a motorcycle plate, resize it to the correct dimensions
     elif img_ar >= moto_min_ar and img_ar <= moto_max_ar:
         # Resize the image to the correct dimensions
-        img = cv2.resize(img, (moto_image_width, moto_image_height))##########################
+        img = cv2.resize(img, (moto_image_width, moto_image_height))
 
     # If there's an error
     else:
@@ -91,8 +91,6 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
     # If the plate is detected
     if crop is not None:
         # Process the image
-        # cv2.imshow('Image', crop)
-        # cv2.waitKey(0)
         crop = process_image(crop)
 
         # If the image has been processed
@@ -119,6 +117,7 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
                 ch, cd = cnn_driver.forward(char)
                 ocr += ch
                 confidence.append(cd)
+            print(TEXT_BLUE + '>> Recognised plate number w/ processing: ' + ocr + TEXT_RESET)
 
             # If the plate is predicted
             if ocr:

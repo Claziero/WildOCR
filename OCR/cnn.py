@@ -187,8 +187,8 @@ class ConvNet(nn.Module):
     # Function to check the results of the network
     def check_results(self, net_output:torch.Tensor, Y_test:np.ndarray) -> int:
         # Check the last bits discriminating the plates
-        out = np.argmax(net_output[-32:])
-        sol = np.argmax(Y_test[-32:])
+        out = np.argmax(net_output)
+        sol = np.argmax(Y_test)
         if out == sol: return 1
         else: return 0
 

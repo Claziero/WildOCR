@@ -476,15 +476,6 @@ def remove_shadows(im:cv2.Mat) -> cv2.Mat:
     
     return thr_img
 
-# Function to remove shadows from images
-def remove_shadows2(im:cv2.Mat) -> cv2.Mat:
-    blur = cv2.medianBlur(im, 3)
-    # cv2.imshow('blur', blur)
-
-    th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-    return th
-
-
 # Function to extract single characters from the plate 
 def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]:
     # Add a white border to the image
@@ -517,7 +508,10 @@ def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]
     img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
 
     # Apply morphological transformations to the image
-    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((1, 1), np.uint8))
+    if rm_shdw:
+        img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+    else:
+        img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((1, 1), np.uint8))
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8))
 
     # cv2.imshow('Processed', img)
