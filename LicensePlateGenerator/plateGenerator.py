@@ -3,11 +3,13 @@ import cv2
 import random
 import random
 import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 from math import floor
 from perlin_noise import PerlinNoise
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 # Define colors
 TEXT_RESET = '\033[0m'
@@ -68,6 +70,7 @@ auto_sp_empty_plate_path = 'assets/empty-plate-special-auto.png'
 
 font_path = 'assets/plates1999.ttf'
 output_path = 'output/'
+chars_path = 'chars/'
 
 # Auxiliar function to get the -* suffix of plate names and generated files
 def get_suffix(ptype:str) -> str:
@@ -401,7 +404,7 @@ def affine_transform(im:Image.Image) -> cv2.Mat:
     p3 = [cols - 10, 10]
     pts1 = np.float32([p1, p2, p3])
     
-    delta = 8
+    delta = 4
     rand = np.random.randint(-delta, delta, 6)
     p1r = [p1[0] + rand[0], p1[1] + rand[1]]
     p2r = [p2[0] + rand[2], p2[1] + rand[3]]
@@ -424,7 +427,7 @@ def perspective_transform(im:Image.Image) -> cv2.Mat:
     p4 = [cols - 10, rows - 10]
     pts1 = np.float32([p1, p2, p3, p4])
     
-    delta = 8
+    delta = 4
     rand = np.random.randint(-delta, delta, 8)
     p1r = [p1[0] + rand[0], p1[1] + rand[1]]
     p2r = [p2[0] + rand[2], p2[1] + rand[3]]
@@ -435,6 +438,155 @@ def perspective_transform(im:Image.Image) -> cv2.Mat:
     M = cv2.getPerspectiveTransform(pts1, pts2)
     dst = cv2.warpPerspective(img, M, (cols, rows))
     return dst
+
+# Function to remove shadows from images
+def remove_shadows(im:cv2.Mat) -> cv2.Mat:
+    # Dilate and blur the image
+    dilated_img = cv2.dilate(im, np.ones((11, 11), np.uint8))
+    # cv2.imshow('dilated', dilated_img)
+    bg_img = cv2.medianBlur(dilated_img, 3)
+    # cv2.imshow('bg', bg_img)
+
+    # Subtract the blurred image from the original image
+    diff_img = 255 - cv2.absdiff(im, bg_img)
+    # cv2.imshow('diff', diff_img)
+
+    # Normalize the image
+    norm_img = diff_img.copy()
+    cv2.normalize(
+        src = diff_img,
+        dst = norm_img,
+        alpha = 0,
+        beta = 255,
+        norm_type = cv2.NORM_MINMAX,
+        dtype = cv2.CV_8UC1
+    )
+    # cv2.imshow('norm', norm_img)
+
+    _, thr_img = cv2.threshold(norm_img, 220, 0, cv2.THRESH_TRUNC)
+    cv2.normalize(
+        src = thr_img, 
+        dst = thr_img,
+        alpha = 0,
+        beta = 255,
+        norm_type = cv2.NORM_MINMAX,
+        dtype = cv2.CV_8UC1
+    )
+    # cv2.imshow('thr', thr_img)
+    
+    return thr_img
+
+# Function to remove shadows from images
+def remove_shadows2(im:cv2.Mat) -> cv2.Mat:
+    blur = cv2.medianBlur(im, 3)
+    # cv2.imshow('blur', blur)
+
+    th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    return th
+
+
+# Function to extract single characters from the plate 
+def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]:
+    # Add a white border to the image
+    plate = ImageOps.expand(plate, border=2, fill='white')
+
+    # Convert the image in cv2 format
+    img = np.asarray(plate)
+    # cv2.imshow('img', img)
+
+    # Remove shadows from the image
+    if rm_shdw:
+        img = remove_shadows(img)
+        # cv2.imshow('rm_shdw', img)
+
+    # print(np.mean(img))
+
+    # If the image is too dark, brighten it
+    if np.mean(img) < 120:
+        # print(TEXT_YELLOW + 'brighten' + TEXT_RESET)
+        img = cv2.convertScaleAbs(img, alpha=1.7)
+        # cv2.imshow('bright', img)
+
+    # If the image is too bright, darken it
+    elif np.mean(img) > 160:
+        # print(TEXT_YELLOW + 'darken' + TEXT_RESET)
+        img = cv2.convertScaleAbs(img, alpha=0.7)
+        # cv2.imshow('dark', img)
+
+    # Apply thresholding to the image
+    img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+    # Apply morphological transformations to the image
+    img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((1, 1), np.uint8))
+    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8))
+
+    # cv2.imshow('Processed', img)
+
+    # Find the contours of the image
+    contours = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
+
+    # Sort the contours by area
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+    # Create a list to store the characters
+    characters = []
+    positions = []
+
+    # For each contour, extract the character
+    r = img.copy()
+    for cnt in contours:
+        # Get the bounding rectangle
+        x, y, w, h = cv2.boundingRect(cnt)
+        # Show the bounding rectangle
+        # cv2.rectangle(r, (x, y), (x + w, y + h), (0, 255, 0), 1)
+        # cv2.imshow('Contours', r)
+
+        # If the area is too small or too large, ignore it
+        if w * h < 100 or w * h > 900:
+            continue
+        
+        # Extract the character from the image
+        char = img[y:y+h, x:x+w]
+
+        # Exclude characters with less than 15% or more than 60% of black pixels
+        s = np.sum(char) / (w * h * 255)
+        if s > 0.85 or s < 0.4:
+            continue
+
+        # Resize the character to a fixed size
+        char = cv2.resize(char, (20, 40))
+
+        # Add a black border to the character
+        # char_cp = np.zeros((44, 24))
+        # char_cp[2:42, 2:22] = char
+        # char_cp[0:2, :] = 0
+        # char_cp[42:44, :] = 0
+        # char_cp[:, 0:2] = 0
+        # char_cp[:, 22:24] = 0
+
+        # Add the character to the list
+        positions.append((char, x, y, w, h))
+
+    # Sort the characters by x position
+    positions = sorted(positions, key=lambda x: x[1]) 
+
+    # Add the characters to the list
+    for pos in positions:
+        characters.append(pos[0])
+
+    # Plot found characters
+    # matplotlib.use('TkAgg')
+    # for i, char in enumerate(characters):
+    #     plt.subplot(1, len(characters), i + 1)
+    #     plt.imshow(char, cmap='gray')
+    #     plt.axis('off')
+    # plt.show()
+
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    
+    return characters
+
 
 # Driver function
 def main(nplates:int, gray:bool, perc_noise:int, ptype:str, aff_t:int, new_noise:int=1000) -> None:
@@ -499,6 +651,7 @@ def driver_main():
         print('  7. Generate marina plates only.')
         print('  8. Generate vigili del fuoco plates only.')
         print('  9. Generate auto special plates only.')
+        print(' 10. Extract characters from generated images.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
@@ -537,6 +690,25 @@ def driver_main():
         # Generate auto special plates only
         elif choice == '9':
             ptype = 'auto_sp'
+
+        # Extract characters from generated images
+        elif choice == '10':
+            if not os.path.exists(chars_path):
+                os.makedirs(chars_path)
+
+            print('Saving cropped characters to {}'.format(chars_path))
+            n = 0
+            for el in os.listdir(output_path):
+                if el.endswith('.png'):
+                    img = Image.open(output_path + el)
+                    chars = extract_characters(img)
+
+                    # Save characters to file
+                    for i, char in enumerate(chars):
+                        cv2.imwrite(chars_path + '{}-{}.png'.format(el[i], n), char)
+                        n += 1
+
+            continue
 
         # Exit
         elif choice == '0':

@@ -8,24 +8,12 @@ Default names for datasets:
     dataset_valid.csv   (VALID DATASET)
     dataset_test.csv    (TEST DATASET)
 
-For every image in the path, the dataset is generated with the following format:
+For every image (character) in the path, the dataset is generated with the following format:
     - The image is converted to a list of ints (gray pixel values)
-        - CAR images have shape (200, 44) = 8800 pixels
-        - MOTORCYCLE images have shape (106, 83) = 8798 pixels
-          => generating the dataset, last 2 ints of a MOTO image will be 0
-    - The image name is added to the dataset
-    - The image name is converted to a list of ints
-        - (22 letters + 10 numbers) x 7 positions (max)
-          + 8 for discriminating plate types = 232 ints
-        - discriminating bits (assume 1 or 0) are disposed in the following order:
-            - CAR plate
-            - MOTORCYCLE plate
-            - AERONAUTICA MILITARE plate
-            - CARABINIERI plate
-            - ESERCITO plate
-            - MARINA MILITARE plate
-            - VIGILI DEL FUOCO plate
-            - AUTO SPECIALE plate
+        - Images have shape (20, 40) = 800 pixels
+    - The image character is added to the dataset
+    - The image character is converted to a list of ints
+        - (22 letters + 10 numbers) = 32 ints
         - letters 'I', 'O', 'Q', 'U' are not allowed
 """
 
@@ -58,41 +46,11 @@ def calculate_gap(c:str) -> int:
         gap += 1
     return gap
 
-# Function to convert a number plate string in 232 ints
-def convert_to_ints(string:str) -> list[int]:
-    # Convert the "string" to a list of ints
-    ints = []
-
-    size = len(string) - 5
-    for i in range(size):
-        char = [0] * 32
-        char[ord(string[i]) - 65 - calculate_gap(string[i])] = 1
-        ints.extend(char)
-    
-    # Add remaining ints if necessary
-    if size < 7:
-        ints.extend([0] * (32 * (7 - size)))
-
-    # Add last ints for discriminating plates
-    ptype = [0] * 8
-    if string.endswith('-auto'):
-        ptype[0] = 1
-    elif string.endswith('-moto'):
-        ptype[1] = 1
-    elif string.endswith('-aero'):
-        ptype[2] = 1
-    elif string.endswith('-cara'):
-        ptype[3] = 1
-    elif string.endswith('-eser'):
-        ptype[4] = 1
-    elif string.endswith('-mari'):
-        ptype[5] = 1
-    elif string.endswith('-vigf'):
-        ptype[6] = 1
-    elif string.endswith('-ausp'):
-        ptype[7] = 1
-    
-    ints.extend(ptype)
+# Function to convert a character to a list of 32 ints
+def convert_to_ints(char:str) -> list[int]:
+    # Convert the "char" to a list of ints
+    ints = [0] * 32
+    ints[ord(char) - 65 - calculate_gap(char)] = 1
     return ints
 
 # Function to generate the dataset in .csv format
@@ -101,20 +59,19 @@ def generate_dataset_csv(path:str, filename:str) -> None:
     dataset = open(filename, 'w+')
 
     # Get all the images in the path
-    images = os.listdir(path)
-    # For each image in the path
-    for elem in tqdm(images):
-        if elem.endswith('.png'):
-            img = Image.open(path + elem)
-            img = np.array(img)
-            if elem.endswith('-moto.png') or elem.endswith('-ausp.png'):
-                img = preprocess_moto(img)
-            img = img.flatten()
-            img = img.tolist()
-            img = str(img)[1:-1].replace(' ', '').strip()
-            dataset.write(img + ',' 
-                + elem[:-4] + ','
-                + str(convert_to_ints(elem[:-4]))[1:-1] + '\n')
+    dirs = os.listdir(path)
+    for dir in tqdm(dirs):
+        # Get all the images in the directory
+        images = os.listdir(os.path.join(path, dir))
+        for elem in images:
+            if elem.endswith('.png'):
+                img = Image.open(os.path.join(path, dir, elem))
+                img = np.array(img)
+                img = img.flatten()
+                img = img.tolist()
+                img = str(img)[1:-1].replace(' ', '').strip()
+                ints = str(convert_to_ints(elem[0]))[1:-1].replace(' ', '').strip()
+                dataset.write(img + ',' + str(elem[0]) + ',' + ints + '\n')
     
     # Close the dataset file
     dataset.close()
@@ -143,65 +100,6 @@ def split_dataset(path:str, train:str, test:str, valid:str, perc_train:int=80, p
     test_d.close()
     return
 
-# Function to preprocess the MOTO plate before being written in the dataset
-def preprocess_moto(X:np.ndarray) -> np.ndarray:
-    """
-        The MOTO image is (originally) of size <w:106, h:83>.
-        The MOTO image is resized to <w:200, h:44> to be used in the network.
-        The image will be cut in half horizontally to get 2 images 
-        of size <106, 42> and <106, 41>, then both images will be scaled to <100, 44>
-        and the two images will be concatenated to get the final image of size <200, 44>.
-    """
-
-    # Open the image from the array
-    img = Image.fromarray(X.reshape(83, 106))
-
-    # Cut the image
-    img_1 = img.crop((0, 0, 106, 42))
-    img_2 = img.crop((0, 42, 106, 83))
-
-    # Resize the images
-    img_1 = img_1.resize((100, 44), Image.ANTIALIAS)
-    img_2 = img_2.resize((100, 44), Image.ANTIALIAS)
-
-    # Concatenate the images
-    img_1 = np.array(img_1)
-    img_2 = np.array(img_2)
-    img = np.concatenate((img_1, img_2), axis=1)
-    
-    # Return the image array
-    return img
-
-# Function to reverse the MOTO plate preprocessing (to be shown as the original image)
-def reverse_moto(X:np.ndarray) -> np.ndarray:
-    """
-        The MOTO image is (now) of size <w:200, h:44>.
-        The MOTO image is resized to <w:106, h:83> to be shown as the original image.
-        The image will be cut in half horizontally to get 2 images 
-        of size <100, 44> each, then the images will be scaled to <106, 42> and <106, 41>
-        and the two images will be concatenated vertically to get the final image of size <106, 83>.
-    """
-
-    # Open the image from the array
-    img = Image.fromarray(X.reshape(44, 200) * 255)
-
-    # Cut the image
-    img_1 = img.crop((0, 0, 100, 44))
-    img_2 = img.crop((100, 0, 200, 44))
-
-    # Resize the images
-    img_1 = img_1.resize((106, 42), Image.ANTIALIAS)
-    img_2 = img_2.resize((106, 41), Image.ANTIALIAS)
-    
-    # Concatenate the images
-    img_1 = np.array(img_1)
-    img_2 = np.array(img_2)
-    img = np.concatenate((img_1, img_2), axis=0)
-    
-    # Return the image
-    return img
-    
-
 # Main function
 def driver_main():
     choice = 1
@@ -217,9 +115,9 @@ def driver_main():
 
         # Generate all datasets
         if choice == '1':
-            images_path = input('Enter the file path containing the images [Enter = \"../LicensePlateGenerator/output/\"]: ')
+            images_path = input('Enter the file path containing the images [Enter = \"../LicensePlateGenerator/characters/\"]: ')
             if images_path == '':
-                images_path = '../LicensePlateGenerator/output/'
+                images_path = '../LicensePlateGenerator/characters/'
 
             filename = input('Enter the filename of the dataset [Enter = \"dataset.csv\"]: ')
             if filename == '':
@@ -261,9 +159,9 @@ def driver_main():
 
         # Generate full dataset only
         elif choice == '2':
-            images_path = input('Enter the file path containing the images [Enter = \"../LicensePlateGenerator/output/\"]: ')
+            images_path = input('Enter the file path containing the images [Enter = \"../LicensePlateGenerator/characters/\"]: ')
             if images_path == '':
-                images_path = '../LicensePlateGenerator/output/'
+                images_path = '../LicensePlateGenerator/characters/'
 
             filename = input('Enter the filename of the dataset [Enter = \"dataset.csv\"]: ')
             if filename == '':

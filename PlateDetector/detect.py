@@ -295,10 +295,10 @@ class PlateDetect():
         # print(detections['detection_scores'])
 
         # Get the coordinates of the plate
-        x1 = int(detections['detection_boxes'][0][0] * image.shape[0])
-        y1 = int(detections['detection_boxes'][0][1] * image.shape[1])
-        x2 = int(detections['detection_boxes'][0][2] * image.shape[0])
-        y2 = int(detections['detection_boxes'][0][3] * image.shape[1])
+        x1 = int(detections['detection_boxes'][0][0] * image.shape[0] - 5)
+        y1 = int(detections['detection_boxes'][0][1] * image.shape[1] - 5)
+        x2 = int(detections['detection_boxes'][0][2] * image.shape[0] + 5)
+        y2 = int(detections['detection_boxes'][0][3] * image.shape[1] + 5)
 
         # Crop the plate
         plate = image[x1:x2, y1:y2]
