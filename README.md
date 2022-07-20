@@ -1,8 +1,8 @@
 # License Plate Reader
 OCR implementation using Convolutional Neural Networks for Italian license plate recognition.
 
-## Identifiable plates
-Possible plate types to generate and recognise:
+## Generable plates
+Possible plate types to generate using `LicensePlateGenerator` module:
 <table align="center">
     <tr>
         <td>
@@ -45,10 +45,13 @@ Also, install all requirements via PIP using `pip install -r requirements.txt`.
 For a better experience, is recommended to install CUDA and cuDNN packages.
 
 ## Usage
-- Generate plates following the driver instructions executing `py plateGenerator.py` inside `LicensePlateGenerator/` folder.
-Generated images will be saved into `LicensePlateGenerator/output/` folder.
+- Generate dataset for OCR NN training following the driver instructions executing `py plateGenerator.py` inside `LicensePlateGenerator/` folder.
+In order to generate images containing single characters only that will be used to train the network:
+    + Generate car images, that will be saved into `LicensePlateGenerator/output/` folder.
+    + Extract characters from those images, that will be saved into `LicensePlateGenerator/chars`.
+    + Once classification is correct, put the images into `LicensePlateGenerator/characters` folder, separating them into folders named `0`, `1`, ..., `9`, `A`, ..., `Z`.
 
-- Once plates have been generated, create the dataset following the driver instructions executing
+- Once character images have been generated, create the dataset following the driver instructions executing
 `py datasetGenerator.py` inside `OCR/` folder.
 Generated datasets will be saved into `OCR/` folder.
 
@@ -61,8 +64,8 @@ NN outputs will be saved into `OCR/` folder.
     + Trained model will be saved into `PlateDetector/Tensorflow/workspace/models/my_ssd_mobnet/` folder, and will be saved using multiple checkpoints. When restoring the model state, be sure to load the latest checkpoint.
 
 - Once both NN have been trained, use `py driver.py` in the root folder to use both Detector ad OCR NN, following the driver instructions.
-    + Every input (images, videos) to the final program must be placed into `data/` folder (if not exists it will be created from the driver).
-    + Every output of this program will be stored into `output/` folder.
+    + Every input (images, videos) to the final program must be placed into `data/input` folder (if not exists it will be created from the driver).
+    + Every output of this program will be stored into `data/output/` folder.
 
 ## Credits
 File `PlateDetector/detect.py` contains code readapted from https://github.com/nicknochnack/TFODCourse/blob/main/2.%20Training%20and%20Detection.ipynb .
