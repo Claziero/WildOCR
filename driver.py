@@ -31,9 +31,10 @@ moto_min_ar, moto_max_ar = 1, 1.5 # Correct AR = 1.27
 data_path = 'data/'
 input_path = data_path + 'input/'
 output_path = data_path + 'output/'
+video_path = data_path + 'video/'
 
 # Function to convert an image to the correct format for CNN
-def process_image(img:cv2.Mat) -> np.ndarray:
+def process_image(img:cv2.Mat, log:bool=True) -> np.ndarray:
     # Check the image dimensions
     img_ar = img.shape[1] / img.shape[0]
     # print('Image dimensions: ' + str(img.shape[1]) + 'x' + str(img.shape[0]))
@@ -51,7 +52,7 @@ def process_image(img:cv2.Mat) -> np.ndarray:
 
     # If there's an error
     else:
-        print(TEXT_RED + '>> Image dimensions are not correct.' + TEXT_RESET)
+        if log: print(TEXT_RED + '>> Image dimensions are not correct.' + TEXT_RESET)
         return None
 
     # Convert the image to a numpy array
@@ -83,7 +84,7 @@ def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str) -> cv2.Mat:
     return result
 
 # Function to scan an image
-def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndarray, save:str) -> None:
+def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndarray, save:str, log:bool=True) -> cv2.Mat:
     # Detect the plate
     crop, coords = pd.detect_and_crop(img_array)
     # print(coords)
@@ -91,7 +92,7 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
     # If the plate is detected
     if crop is not None:
         # Process the image
-        crop = process_image(crop)
+        crop = process_image(crop, False)
 
         # If the image has been processed
         if crop is not None:
@@ -107,8 +108,9 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
 
                 # If there are less than 7 characters recognized, the plate is not valid
                 if len(chars) < 7:
-                    print(TEXT_RED + '>> Recognised only {} characters out of 7.'.format(len(chars)) + TEXT_RESET)
-                    return
+                    if log:
+                        print(TEXT_RED + '>> Recognised only {} characters out of 7.'.format(len(chars)) + TEXT_RESET)
+                    return img
 
             # Predict all characters
             ocr = ''
@@ -117,7 +119,8 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
                 ch, cd = cnn_driver.forward(char)
                 ocr += ch
                 confidence.append(cd)
-            print(TEXT_BLUE + '>> Recognised plate number w/ processing: ' + ocr + TEXT_RESET)
+            if log:
+                print(TEXT_BLUE + '>> Recognised plate number w/ processing: ' + ocr + TEXT_RESET)
 
             # If the plate is predicted
             if ocr:
@@ -162,17 +165,85 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
                     ocr = ocr[:min] + ocr[min+1:]
 
                 # Print the text
-                print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
+                if log:
+                    print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
                 res = write_ocr(img, coords, ocr)
 
                 # Save the image
                 if save is not False:
                     cv2.imwrite(save, res)
+                else: 
+                    return res
             else:
-                print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
+                if log:
+                    print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
     else:
-        print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
+        if log:
+            print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
+        return img
         
+    return img
+
+# Function to scan a video file
+def scan_video(cnn_driver:Driver, pd:PlateDetect, video_file:str, save:str) -> None:
+    # Open the video file
+    cap = cv2.VideoCapture(video_file)
+
+    # If the video file is opened
+    if cap.isOpened():
+        # Get the video frame number
+        frame_number_tot = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        # Get the width and height of the video
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        # Create a video writer
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(save, fourcc, 24.0, (width, height))
+
+        # Initialize the frame number
+        frame_number = 0
+
+        # While the video is being read
+        while cap.isOpened():
+            # Read a frame
+            ret, frame = cap.read()
+            # cv2.imshow('Cam', frame)
+
+            # Force stop condition
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+            # If the frame is read
+            if ret:
+                # Scan the frame as an image
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                img_array = np.asarray(frame)
+                res = scan_image(cnn_driver, pd, frame, img_array, False, False)
+
+                # Write the image to the video file
+                res = cv2.cvtColor(res, cv2.COLOR_BGR2RGB)
+                out.write(res)
+
+                # Increment the frame number
+                frame_number += 1
+                if frame_number % 100 == 0:
+                    print(TEXT_GREEN 
+                        + 'Frame number: {}/{}'.format(frame_number, frame_number_tot) 
+                        + TEXT_RESET)
+
+            # If the video is finished
+            else:
+                # Break the loop
+                break
+
+        # Release the video file
+        cap.release()
+        out.release()
+    else:
+        print(TEXT_RED + '>> Error opening video stream or file.' + TEXT_RESET)
+
     return
 
 # Driver function
@@ -197,6 +268,7 @@ def driver() -> None:
         print('  1. Load pretrained models of OCR NN and Detector NN.')
         print('  2. Scan an image.')
         print('  3. Scan a directory.')
+        print('  4. Scan a video.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)   
 
@@ -296,6 +368,41 @@ def driver() -> None:
                 else: save_name = False
                 scan_image(cnn_driver, plate_detect, img, img_array, save_name)
 
+            continue
+
+        # Scan a video
+        elif choice == '4':
+            if not nn_loaded:
+                print(TEXT_RED + '>> NNs not loaded.' + TEXT_RESET)
+
+                # Load the OCR NN
+                load = input('Enter the path to the pretrained model for OCR NN [Enter = \"OCR/model.pkl\"]: ')
+                if load == '':
+                    load = 'OCR/model.pkl'
+                cnn_driver.load_model(load)
+
+                # Load the Detector NN
+                plate_detect.load_from_checkpoint()
+                nn_loaded = True
+
+            # Get the video path
+            print('Taking input videos from \"' + video_path + '\" folder.')
+            video = input('Enter the name of the video [Enter = \"video.mp4\"]: ')
+            if video == '':
+                video = 'video.mp4'
+            video = os.path.join(video_path, video)
+            
+
+            print('Saving output video to \"' + video_path + '\" folder.')
+            save = input('Enter the name of the video to save [Enter = \"{}\" | \"n\" = None]: '.format(video[:-4] + '_output.mp4'))
+            if save == '':
+                save = video[:-4] + '_output.mp4'
+            elif save == 'n':
+                save = False
+
+            # Scan the video
+            print('Scanning video \"' + video + '\" ...')
+            scan_video(cnn_driver, plate_detect, video, save)
             continue
             
         # If there's an error

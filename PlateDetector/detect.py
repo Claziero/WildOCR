@@ -302,6 +302,9 @@ class PlateDetect():
 
         # Crop the plate
         plate = image[x1:x2, y1:y2]
-        plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
+        if not plate.shape.__contains__(0):
+            plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
+        else:
+            plate = None
 
         return plate, (x1, y1, x2, y2)
