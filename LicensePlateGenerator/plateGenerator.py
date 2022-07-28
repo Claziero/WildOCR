@@ -1,7 +1,6 @@
 import os
 import cv2
 import random
-import random
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -476,11 +475,8 @@ def remove_shadows(im:cv2.Mat) -> cv2.Mat:
     
     return thr_img
 
-# Function to extract single characters from the plate 
-def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]:
-    # Add a white border to the image
-    plate = ImageOps.expand(plate, border=2, fill='white')
-
+# Function to apply transformations to images before character extraction
+def apply_trfs(plate:Image.Image, rm_shdw:bool = False) -> cv2.Mat:
     # Convert the image in cv2 format
     img = np.asarray(plate)
     # cv2.imshow('img', img)
@@ -512,9 +508,19 @@ def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]
         img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
     else:
         img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((1, 1), np.uint8))
+    
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8))
-
     # cv2.imshow('Processed', img)
+
+    return img
+
+# Function to extract single characters from the plate 
+def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]:
+    # Add a white border to the image
+    plate = ImageOps.expand(plate, border=2, fill='white')
+
+    # Apply transformations to the image
+    img = apply_trfs(plate, rm_shdw)
 
     # Find the contours of the image
     contours = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
