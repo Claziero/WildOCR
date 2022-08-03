@@ -2,13 +2,12 @@ import os
 import cv2
 import random
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 from math import floor
 from perlin_noise import PerlinNoise
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from common import extract_characters
+from PIL import Image, ImageDraw, ImageFont
 
 # Define colors
 TEXT_RESET = '\033[0m'
@@ -437,180 +436,6 @@ def perspective_transform(im:Image.Image) -> cv2.Mat:
     M = cv2.getPerspectiveTransform(pts1, pts2)
     dst = cv2.warpPerspective(img, M, (cols, rows))
     return dst
-
-# Function to remove shadows from images
-def remove_shadows(im:cv2.Mat) -> cv2.Mat:
-    # Dilate and blur the image
-    dilated_img = cv2.dilate(im, np.ones((11, 11), np.uint8))
-    # cv2.imshow('dilated', dilated_img)
-    # cv2.imwrite('dilated2.png', dilated_img)
-    bg_img = cv2.medianBlur(dilated_img, 3)
-    # cv2.imshow('bg', bg_img)
-    # cv2.imwrite('bg.png', bg_img)
-
-    # Subtract the blurred image from the original image
-    diff_img = 255 - cv2.absdiff(im, bg_img)
-    # cv2.imshow('diff', diff_img)
-    # cv2.imwrite('diff.png', diff_img)
-
-    # Normalize the image
-    norm_img = diff_img.copy()
-    cv2.normalize(
-        src = diff_img,
-        dst = norm_img,
-        alpha = 0,
-        beta = 255,
-        norm_type = cv2.NORM_MINMAX,
-        dtype = cv2.CV_8UC1
-    )
-    # cv2.imshow('norm', norm_img)
-    # cv2.imwrite('norm.png', norm_img)
-
-    _, thr_img = cv2.threshold(norm_img, 220, 0, cv2.THRESH_TRUNC)
-    # cv2.imshow('thr_img', thr_img)
-    cv2.normalize(
-        src = thr_img, 
-        dst = thr_img,
-        alpha = 0,
-        beta = 255,
-        norm_type = cv2.NORM_MINMAX,
-        dtype = cv2.CV_8UC1
-    )
-    # cv2.imshow('thr2', thr_img)
-    # cv2.imwrite('thr2.png', thr_img)
-    
-    return thr_img
-
-# Function to apply transformations to images before character extraction
-def apply_trfs(plate:Image.Image, rm_shdw:bool = False) -> cv2.Mat:
-    # Convert the image in cv2 format
-    img = np.asarray(plate)
-    # cv2.imshow('img', img)
-    # cv2.imwrite('gray.png', img)
-
-    # Remove shadows from the image
-    if rm_shdw:
-        img = remove_shadows(img)
-        # cv2.imshow('rm_shdw', img)
-
-    # print(np.mean(img))
-
-    # If the image is too dark, brighten it
-    if np.mean(img) < 120:
-        print(TEXT_YELLOW + 'brighten' + TEXT_RESET)
-        img = cv2.convertScaleAbs(img, alpha=1.7)
-        # cv2.imshow('bright', img)
-
-    # If the image is too bright, darken it
-    elif np.mean(img) > 160:
-        print(TEXT_YELLOW + 'darken' + TEXT_RESET)
-        img = cv2.convertScaleAbs(img, alpha=0.7)
-        # cv2.imshow('dark', img)
-
-    # Apply thresholding to the image
-    img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    # cv2.imshow('thr', img)
-    # cv2.imwrite('threshold.png', img)
-    img = 255 - img
-
-    # Apply morphological transformations to the image
-    
-    # img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-    # cv2.imshow('open', img)
-    # cv2.imwrite('open.png', img)
-    
-    img = cv2.erode(img, np.ones((2, 2), np.uint8))
-    img = 255 - img
-    # cv2.imshow('erode', img)
-    # cv2.imwrite('erode.png', img)
-    img = 255 - img
-    img = cv2.dilate(img, np.ones((2, 2), np.uint8))
-    img = 255 - img
-    # cv2.imshow('dilate', img)
-    # cv2.imwrite('dilate.png', img)
-    
-    img = 255 - img
-    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((2, 2), np.uint8))
-    img = 255 - img
-    # cv2.imshow('close', img)
-    # cv2.imwrite('close.png', img)
-    
-    # cv2.waitKey(0)
-    return img
-
-# Function to extract single characters from the plate 
-def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]:
-    # Add a white border to the image
-    plate = ImageOps.expand(plate, border=2, fill='white')
-
-    # Apply transformations to the image
-    img = apply_trfs(plate, rm_shdw)
-
-    # Find the contours of the image
-    contours = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
-
-    # Sort the contours by area
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)
-
-    # Create a list to store the characters
-    characters = []
-    positions = []
-
-    # For each contour, extract the character
-    r = img.copy()
-    for cnt in contours:
-        # Get the bounding rectangle
-        x, y, w, h = cv2.boundingRect(cnt)
-        # Show the bounding rectangle
-        # cv2.rectangle(r, (x, y), (x + w, y + h), (0, 255, 0), 1)
-        # cv2.imshow('Contours', r)
-
-        # If the area is too small or too large, ignore it
-        if w * h < 100 or w * h > 900:
-            continue
-        
-        # Extract the character from the image
-        char = img[y:y+h, x:x+w]
-
-        # Exclude characters with less than 15% or more than 60% of black pixels
-        s = np.sum(char) / (w * h * 255)
-        if s > 0.85 or s < 0.4:
-            continue
-
-        # Resize the character to a fixed size
-        char = cv2.resize(char, (20, 40))
-
-        # Add a black border to the character
-        # char_cp = np.zeros((44, 24))
-        # char_cp[2:42, 2:22] = char
-        # char_cp[0:2, :] = 0
-        # char_cp[42:44, :] = 0
-        # char_cp[:, 0:2] = 0
-        # char_cp[:, 22:24] = 0
-
-        # Add the character to the list
-        positions.append((char, x, y, w, h))
-        # positions.append((char_cp, x, y, w, h))
-
-    # Sort the characters by x position
-    positions = sorted(positions, key=lambda x: x[1]) 
-
-    # Add the characters to the list
-    for pos in positions:
-        characters.append(pos[0])
-
-    # Plot found characters
-    # matplotlib.use('TkAgg')
-    # for i, char in enumerate(characters):
-    #     plt.subplot(1, len(characters), i + 1)
-    #     plt.imshow(char, cmap='gray')
-    #     plt.axis('off')
-    # plt.show()
-
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    
-    return characters
 
 
 # Driver function

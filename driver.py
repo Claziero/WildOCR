@@ -9,7 +9,7 @@ sys.path.insert(0, './LicensePlateGenerator')
 from PIL import Image
 from OCR.driver import Driver
 from PlateDetector.detect import PlateDetect
-from LicensePlateGenerator.plateGenerator import extract_characters
+from LicensePlateGenerator.common import extract_characters
 
 # Define colors
 TEXT_RESET = '\033[0m'

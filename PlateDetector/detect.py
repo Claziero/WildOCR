@@ -56,11 +56,6 @@ class PlateDetect():
         self.detection_model = None
         self.category_index = None
         self.initial_path = initial_path
-
-        # gpus = tf.config.list_physical_devices('GPU')
-        # if gpus: print(gpus)
-        # else: print("No GPU available!")
-
         return
 
     # Function to setup Tensorflow
@@ -258,7 +253,7 @@ class PlateDetect():
         return
 
     # Function to process an image and return the cropped plate image and its coordinates
-    def detect_and_crop(self, image:np.ndarray) -> tuple[cv2.Mat, list[int]]:
+    def detect_and_crop(self, image:np.ndarray, save:bool=False) -> tuple[cv2.Mat, list[int]]:
         # Create the tensor to feed into the NN
         input_tensor = tf.convert_to_tensor(np.expand_dims(image, 0), dtype=tf.float32)
         detections = self.detect_fn(input_tensor)
@@ -322,7 +317,8 @@ class PlateDetect():
             # # cv2.destroyAllWindows()
 
             # plate = mask
-            cv2.imwrite('plate.png', plate)
+            
+            if save: cv2.imwrite('plate.png', plate)
             plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
         else:
             plate = None
