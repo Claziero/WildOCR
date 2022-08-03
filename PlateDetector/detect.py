@@ -303,6 +303,26 @@ class PlateDetect():
         # Crop the plate
         plate = image[x1:x2, y1:y2]
         if not plate.shape.__contains__(0):
+            # cv2.imshow('plate', plate)
+
+            # # Mask everything that is black
+            # hsv = cv2.cvtColor(plate, cv2.COLOR_BGR2HSV)
+            # lower_black = np.array([0, 0, 0])
+            # upper_black = np.array([180, 255, 90])
+            # mask = cv2.inRange(hsv, lower_black, upper_black)
+            # kernel = np.ones((2, 2), np.uint8)
+            # mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+            # cv2.imshow('mask', mask)
+
+            # # Reverse the mask
+            # mask = cv2.bitwise_not(mask)
+            # cv2.imshow('mask', mask)
+
+            # # cv2.waitKey(0)
+            # # cv2.destroyAllWindows()
+
+            # plate = mask
+            cv2.imwrite('plate.png', plate)
             plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
         else:
             plate = None

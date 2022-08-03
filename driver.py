@@ -92,7 +92,8 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
     # If the plate is detected
     if crop is not None:
         # Process the image
-        crop = process_image(crop, False)
+        # crop = process_image(crop, False)
+        crop = np.array(crop, dtype=np.uint8)
 
         # If the image has been processed
         if crop is not None:

@@ -443,12 +443,15 @@ def remove_shadows(im:cv2.Mat) -> cv2.Mat:
     # Dilate and blur the image
     dilated_img = cv2.dilate(im, np.ones((11, 11), np.uint8))
     # cv2.imshow('dilated', dilated_img)
+    # cv2.imwrite('dilated2.png', dilated_img)
     bg_img = cv2.medianBlur(dilated_img, 3)
     # cv2.imshow('bg', bg_img)
+    # cv2.imwrite('bg.png', bg_img)
 
     # Subtract the blurred image from the original image
     diff_img = 255 - cv2.absdiff(im, bg_img)
     # cv2.imshow('diff', diff_img)
+    # cv2.imwrite('diff.png', diff_img)
 
     # Normalize the image
     norm_img = diff_img.copy()
@@ -461,8 +464,10 @@ def remove_shadows(im:cv2.Mat) -> cv2.Mat:
         dtype = cv2.CV_8UC1
     )
     # cv2.imshow('norm', norm_img)
+    # cv2.imwrite('norm.png', norm_img)
 
     _, thr_img = cv2.threshold(norm_img, 220, 0, cv2.THRESH_TRUNC)
+    # cv2.imshow('thr_img', thr_img)
     cv2.normalize(
         src = thr_img, 
         dst = thr_img,
@@ -471,7 +476,8 @@ def remove_shadows(im:cv2.Mat) -> cv2.Mat:
         norm_type = cv2.NORM_MINMAX,
         dtype = cv2.CV_8UC1
     )
-    # cv2.imshow('thr', thr_img)
+    # cv2.imshow('thr2', thr_img)
+    # cv2.imwrite('thr2.png', thr_img)
     
     return thr_img
 
@@ -480,6 +486,7 @@ def apply_trfs(plate:Image.Image, rm_shdw:bool = False) -> cv2.Mat:
     # Convert the image in cv2 format
     img = np.asarray(plate)
     # cv2.imshow('img', img)
+    # cv2.imwrite('gray.png', img)
 
     # Remove shadows from the image
     if rm_shdw:
@@ -490,28 +497,45 @@ def apply_trfs(plate:Image.Image, rm_shdw:bool = False) -> cv2.Mat:
 
     # If the image is too dark, brighten it
     if np.mean(img) < 120:
-        # print(TEXT_YELLOW + 'brighten' + TEXT_RESET)
+        print(TEXT_YELLOW + 'brighten' + TEXT_RESET)
         img = cv2.convertScaleAbs(img, alpha=1.7)
         # cv2.imshow('bright', img)
 
     # If the image is too bright, darken it
     elif np.mean(img) > 160:
-        # print(TEXT_YELLOW + 'darken' + TEXT_RESET)
+        print(TEXT_YELLOW + 'darken' + TEXT_RESET)
         img = cv2.convertScaleAbs(img, alpha=0.7)
         # cv2.imshow('dark', img)
 
     # Apply thresholding to the image
     img = cv2.threshold(img, 200, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    # cv2.imshow('thr', img)
+    # cv2.imwrite('threshold.png', img)
+    img = 255 - img
 
     # Apply morphological transformations to the image
-    if rm_shdw:
-        img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-    else:
-        img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((1, 1), np.uint8))
     
-    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((1, 1), np.uint8))
-    # cv2.imshow('Processed', img)
-
+    # img = cv2.morphologyEx(img, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+    # cv2.imshow('open', img)
+    # cv2.imwrite('open.png', img)
+    
+    img = cv2.erode(img, np.ones((2, 2), np.uint8))
+    img = 255 - img
+    # cv2.imshow('erode', img)
+    # cv2.imwrite('erode.png', img)
+    img = 255 - img
+    img = cv2.dilate(img, np.ones((2, 2), np.uint8))
+    img = 255 - img
+    # cv2.imshow('dilate', img)
+    # cv2.imwrite('dilate.png', img)
+    
+    img = 255 - img
+    img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, np.ones((2, 2), np.uint8))
+    img = 255 - img
+    # cv2.imshow('close', img)
+    # cv2.imwrite('close.png', img)
+    
+    # cv2.waitKey(0)
     return img
 
 # Function to extract single characters from the plate 
@@ -566,6 +590,7 @@ def extract_characters(plate:Image.Image, rm_shdw:bool = False) -> list[cv2.Mat]
 
         # Add the character to the list
         positions.append((char, x, y, w, h))
+        # positions.append((char_cp, x, y, w, h))
 
     # Sort the characters by x position
     positions = sorted(positions, key=lambda x: x[1]) 
