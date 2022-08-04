@@ -100,12 +100,12 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndar
             crop = Image.fromarray(crop)
             
             # Extract single characters from the image
-            chars = extract_characters(crop)
+            chars = extract_characters(crop, show=True, save=True)
 
             # If there are less than 7 characters, retry the scanning using remove_shadows function
             if len(chars) < 7:
                 # Extract single characters from the image
-                chars = extract_characters(crop, True)
+                chars = extract_characters(crop, True, show=True, save=True)
 
                 # If there are less than 7 characters recognized, the plate is not valid
                 if len(chars) < 7:
