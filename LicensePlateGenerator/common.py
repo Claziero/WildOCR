@@ -162,8 +162,8 @@ def rectify_plate(plate:cv2.Mat, show:bool=False, save:bool=False) -> tuple[cv2.
     for i, cnt in enumerate(contours):
         area = cv2.contourArea(cnt)
         # print(area)
-        # The contour area has to be at least 700 pixel
-        if area > 700:
+        # The contour area has to be at least 1000 pixel
+        if area > 1000:
             perimeter = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, 0.02 * perimeter, True)
 
@@ -270,7 +270,11 @@ def extract_characters(plate:Image.Image, rm_shdw:bool=False, show:bool=False, s
 
     # Sort the characters by x position
     positions = sorted(positions, key=lambda x: x[1]) 
-    if show: positions_cp = sorted(positions_cp, key=lambda x: x[1]) 
+    if show:
+        char_cp = []
+        positions_cp = sorted(positions_cp, key=lambda x: x[1])
+        for pos in positions_cp:
+            char_cp.append(pos[0])
 
     # Add the characters to the list
     for pos in positions:
@@ -279,8 +283,8 @@ def extract_characters(plate:Image.Image, rm_shdw:bool=False, show:bool=False, s
     # Plot found characters
     if show:
         matplotlib.use('TkAgg')
-        for i, char in enumerate(characters):
-            plt.subplot(1, len(characters), i + 1)
+        for i, char in enumerate(char_cp):
+            plt.subplot(1, len(char_cp), i + 1)
             plt.imshow(char, cmap='gray')
             plt.axis('off')
         plt.show()
