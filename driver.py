@@ -8,7 +8,7 @@ sys.path.insert(0, './LicensePlateGenerator')
 
 from PIL import Image
 from OCR.driver import Driver
-from PlateDetector.detect import PlateDetect
+from Detector.detect import Detector
 from LicensePlateGenerator.common import extract_characters
 
 # Define colors
@@ -176,7 +176,7 @@ def plate_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log
     return img
 
 # Function to scan an image
-def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, save:str, log:bool=True) -> cv2.Mat:
+def scan_image(cnn_driver:Driver, pd:Detector, img:cv2.Mat, save:str, log:bool=True) -> cv2.Mat:
     # Get all detections
     img_array = np.asarray(img)
     detections = pd.detect_and_crop(img_array)
@@ -223,7 +223,7 @@ def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, save:str, log:boo
     return img
 
 # Function to scan a video file
-def scan_video(cnn_driver:Driver, pd:PlateDetect, video_file:str, save:str) -> None:
+def scan_video(cnn_driver:Driver, pd:Detector, video_file:str, save:str) -> None:
     # Open the video file
     cap = cv2.VideoCapture(video_file)
 
@@ -295,7 +295,7 @@ def driver() -> None:
     cnn_driver = Driver()
 
     # Create a NN for plate detection functionality
-    plate_detect = PlateDetect('PlateDetector/')
+    detector = Detector('Detector/')
     
     choice = 1
     nn_loaded = False
@@ -323,7 +323,7 @@ def driver() -> None:
             cnn_driver.load_model(load)
 
             # Load the Detector NN
-            plate_detect.load_from_checkpoint()
+            detector.load_from_checkpoint()
             nn_loaded = True
             continue
 
@@ -339,7 +339,7 @@ def driver() -> None:
                 cnn_driver.load_model(load)
 
                 # Load the Detector NN
-                plate_detect.load_from_checkpoint()
+                detector.load_from_checkpoint()
                 nn_loaded = True
 
             # Get the image path
@@ -360,7 +360,7 @@ def driver() -> None:
 
             if save != False: save_name = os.path.join(output_path, save)
             else: save_name = False
-            scan_image(cnn_driver, plate_detect, img, save_name)
+            scan_image(cnn_driver, detector, img, save_name)
             continue
 
         # Scan a directory
@@ -375,7 +375,7 @@ def driver() -> None:
                 cnn_driver.load_model(load)
 
                 # Load the Detector NN
-                plate_detect.load_from_checkpoint()
+                detector.load_from_checkpoint()
                 nn_loaded = True
                 
             # Get the directory path
@@ -401,7 +401,7 @@ def driver() -> None:
 
                 if save != False: save_name = os.path.join(output_path, save, im)
                 else: save_name = False
-                scan_image(cnn_driver, plate_detect, img, save_name)
+                scan_image(cnn_driver, detector, img, save_name)
 
             continue
 
@@ -417,7 +417,7 @@ def driver() -> None:
                 cnn_driver.load_model(load)
 
                 # Load the Detector NN
-                plate_detect.load_from_checkpoint()
+                detector.load_from_checkpoint()
                 nn_loaded = True
 
             # Get the video path
@@ -437,7 +437,7 @@ def driver() -> None:
 
             # Scan the video
             print('Scanning video \"' + video + '\" ...')
-            scan_video(cnn_driver, plate_detect, video, save)
+            scan_video(cnn_driver, detector, video, save)
             continue
             
         # If there's an error

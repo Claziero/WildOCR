@@ -50,7 +50,7 @@ labels = [{'name':'Text', 'id':1, 'display_name':'Text'}, {'name':'licence', 'id
 last_checkpoint = 'ckpt-101'
 
 # Class for the detector NN
-class PlateDetect():
+class Detector():
     # Constructor
     def __init__(self, initial_path:str='') -> None:
         self.detection_model = None
@@ -308,7 +308,7 @@ class PlateDetect():
 
         return dets
 
-# pd = PlateDetect()
+# pd = Detector()
 
 # pd.setup_tf()
 # pd.verify_installation()
