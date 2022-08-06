@@ -1,3 +1,5 @@
 Tensorflow/
 nvvm/
 __pycache__/
+*.png
+*.jpg

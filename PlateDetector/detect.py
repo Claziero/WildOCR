@@ -46,8 +46,8 @@ files = {
     'LABELMAP': os.path.join(paths['ANNOTATION_PATH'], LABEL_MAP_NAME)
 }
 
-labels = [{'name':'licence', 'id':1}]
-last_checkpoint = 'ckpt-13'
+labels = [{'name':'Text', 'id':1, 'display_name':'Text'}, {'name':'licence', 'id':2}]
+last_checkpoint = 'ckpt-31'
 
 # Class for the detector NN
 class PlateDetect():
@@ -151,9 +151,9 @@ class PlateDetect():
         pipeline_config.train_config.fine_tune_checkpoint = os.path.join(paths['PRETRAINED_MODEL_PATH'], PRETRAINED_MODEL_NAME, 'checkpoint', 'ckpt-0')
         pipeline_config.train_config.fine_tune_checkpoint_type = "detection"
         pipeline_config.train_input_reader.label_map_path = files['LABELMAP']
-        pipeline_config.train_input_reader.tf_record_input_reader.input_path[:] = [os.path.join(paths['ANNOTATION_PATH'], 'train.record')]
+        pipeline_config.train_input_reader.tf_record_input_reader.input_path[:] = [os.path.join(paths['ANNOTATION_PATH'], 'train.record'), os.path.join(paths['ANNOTATION_PATH'], 'train1.tfrecord')]
         pipeline_config.eval_input_reader[0].label_map_path = files['LABELMAP']
-        pipeline_config.eval_input_reader[0].tf_record_input_reader.input_path[:] = [os.path.join(paths['ANNOTATION_PATH'], 'test.record')]
+        pipeline_config.eval_input_reader[0].tf_record_input_reader.input_path[:] = [os.path.join(paths['ANNOTATION_PATH'], 'test.record'), os.path.join(paths['ANNOTATION_PATH'], 'test1.tfrecord')]
 
         config_text = text_format.MessageToString(pipeline_config)                                                                                                                                                                                                        
         with tf.io.gfile.GFile(files['PIPELINE_CONFIG'], "wb") as f:                                                                                                                                                                                                                     
@@ -164,7 +164,7 @@ class PlateDetect():
     # Function to train the model
     def train(self) -> None:
         TRAINING_SCRIPT = os.path.join(paths['APIMODEL_PATH'], 'research', 'object_detection', 'model_main_tf2.py')
-        command = "python {} --model_dir={} --pipeline_config_path={} --num_train_steps=10000".format(
+        command = "python {} --model_dir={} --pipeline_config_path={} --num_train_steps=30000".format(
             TRAINING_SCRIPT, 
             paths['CHECKPOINT_PATH'],
             files['PIPELINE_CONFIG']
@@ -228,7 +228,7 @@ class PlateDetect():
                     for key, value in detections.items()}
         detections['num_detections'] = num_detections
 
-        # detection_classes should be ints.
+        # Detection_classes should be ints.
         detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
 
         label_id_offset = 1
@@ -253,7 +253,7 @@ class PlateDetect():
         return
 
     # Function to process an image and return the cropped plate image and its coordinates
-    def detect_and_crop(self, image:np.ndarray, save:bool=False) -> tuple[cv2.Mat, list[int]]:
+    def detect_and_crop(self, image:np.ndarray, save:bool=False) -> dict:
         # Create the tensor to feed into the NN
         input_tensor = tf.convert_to_tensor(np.expand_dims(image, 0), dtype=tf.float32)
         detections = self.detect_fn(input_tensor)
@@ -263,64 +263,60 @@ class PlateDetect():
                     for key, value in detections.items()}
         detections['num_detections'] = num_detections
 
-        # detection_classes should be ints.
+        # Detection_classes should be ints.
         detections['detection_classes'] = detections['detection_classes'].astype(np.int64)
 
-        # label_id_offset = 1
-        # image_np_with_detections = image.copy()
+        # Filter detections by score
+        index = 0
+        for i in detections['detection_scores']:
+            if i >= 0.3: index += 1
+            else: break
 
-        # viz_utils.visualize_boxes_and_labels_on_image_array(
-        #     image_np_with_detections,
-        #     detections['detection_boxes'],
-        #     detections['detection_classes'] + label_id_offset,
-        #     detections['detection_scores'],
-        #     self.category_index,
-        #     use_normalized_coordinates = True,
-        #     max_boxes_to_draw = 5,
-        #     min_score_thresh = .4,
-        #     agnostic_mode = False
-        # )
+        detections['num_detections'] = index
+        detections['detection_boxes'] = detections['detection_boxes'][:index]
+        detections['detection_scores'] = detections['detection_scores'][:index]
+        detections['detection_classes'] = detections['detection_classes'][:index]
+        
+        print(detections['detection_boxes'])
+        print(detections['detection_scores'])
+        print(detections['detection_classes'])
 
-        # matplotlib.use('TkAgg')
-        # plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
-        # plt.show()
+        dets = {}
+        dets['num_detections'] = detections['num_detections']
+        dets['detection_boxes'] = detections['detection_boxes']
+        dets['detection_scores'] = detections['detection_scores']
+        dets['detection_classes'] = detections['detection_classes']
 
-        # print(detections['detection_boxes'])
-        # print(detections['detection_classes'])
-        # print(detections['detection_scores'])
+        label_id_offset = 1
+        image_np_with_detections = image.copy()
 
-        # Get the coordinates of the plate
-        x1 = int(detections['detection_boxes'][0][0] * image.shape[0] - 5)
-        y1 = int(detections['detection_boxes'][0][1] * image.shape[1] - 5)
-        x2 = int(detections['detection_boxes'][0][2] * image.shape[0] + 5)
-        y2 = int(detections['detection_boxes'][0][3] * image.shape[1] + 5)
+        viz_utils.visualize_boxes_and_labels_on_image_array(
+            image_np_with_detections,
+            detections['detection_boxes'],
+            detections['detection_classes'] + label_id_offset,
+            detections['detection_scores'],
+            self.category_index,
+            use_normalized_coordinates = True,
+            max_boxes_to_draw = 10,
+            min_score_thresh = .3,
+            agnostic_mode = False
+        )
 
-        # Crop the plate
-        plate = image[x1:x2, y1:y2]
-        if not plate.shape.__contains__(0):
-            # cv2.imshow('plate', plate)
+        matplotlib.use('TkAgg')
+        plt.imshow(cv2.cvtColor(image_np_with_detections, cv2.COLOR_BGR2RGB))
+        plt.show()
 
-            # # Mask everything that is black
-            # hsv = cv2.cvtColor(plate, cv2.COLOR_BGR2HSV)
-            # lower_black = np.array([0, 0, 0])
-            # upper_black = np.array([180, 255, 90])
-            # mask = cv2.inRange(hsv, lower_black, upper_black)
-            # kernel = np.ones((2, 2), np.uint8)
-            # mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-            # cv2.imshow('mask', mask)
+        return dets
 
-            # # Reverse the mask
-            # mask = cv2.bitwise_not(mask)
-            # cv2.imshow('mask', mask)
+# pd = PlateDetect()
 
-            # # cv2.waitKey(0)
-            # # cv2.destroyAllWindows()
+# pd.setup_tf()
+# pd.verify_installation()
+# pd.create_pipeline_config()
 
-            # plate = mask
-            
-            if save: cv2.imwrite('plate.png', plate)
-            plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
-        else:
-            plate = None
+# pd.train()
+# pd.test()
 
-        return plate, (x1, y1, x2, y2)
+# pd.load_from_checkpoint()
+# img = cv2.imread('t12.jpg')
+# pd.detect_and_crop(img, save=True)
