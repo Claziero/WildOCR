@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 
 from tqdm import tqdm
-from plateGenerator import apply_trfs
+from common import apply_trfs
 from PIL import Image, ImageDraw, ImageFont
 
 # Define colors

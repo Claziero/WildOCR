@@ -4,12 +4,12 @@ import sys
 import numpy as np
 
 sys.path.insert(0, './OCR')
-sys.path.insert(0, './LicensePlateGenerator')
+sys.path.insert(0, './CharacterGenerator')
 
 from PIL import Image
 from OCR.driver import Driver
 from Detector.detect import Detector
-from LicensePlateGenerator.common import extract_characters
+from CharacterGenerator.common import extract_characters
 
 # Define colors
 TEXT_RESET = '\033[0m'

@@ -115,9 +115,9 @@ def driver_main():
 
         # Generate all datasets
         if choice == '1':
-            images_path = input('Enter the file path containing the images [Enter = \"../LicensePlateGenerator/characters/\"]: ')
+            images_path = input('Enter the file path containing the images [Enter = \"../CharacterGenerator/characters/\"]: ')
             if images_path == '':
-                images_path = '../LicensePlateGenerator/characters/'
+                images_path = '../CharacterGenerator/characters/'
 
             filename = input('Enter the filename of the dataset [Enter = \"dataset.csv\"]: ')
             if filename == '':
@@ -159,9 +159,9 @@ def driver_main():
 
         # Generate full dataset only
         elif choice == '2':
-            images_path = input('Enter the file path containing the images [Enter = \"../LicensePlateGenerator/characters/\"]: ')
+            images_path = input('Enter the file path containing the images [Enter = \"../CharacterGenerator/characters/\"]: ')
             if images_path == '':
-                images_path = '../LicensePlateGenerator/characters/'
+                images_path = '../CharacterGenerator/characters/'
 
             filename = input('Enter the filename of the dataset [Enter = \"dataset.csv\"]: ')
             if filename == '':
