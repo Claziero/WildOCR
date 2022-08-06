@@ -47,7 +47,7 @@ files = {
 }
 
 labels = [{'name':'Text', 'id':1, 'display_name':'Text'}, {'name':'licence', 'id':2}]
-last_checkpoint = 'ckpt-31'
+last_checkpoint = 'ckpt-101'
 
 # Class for the detector NN
 class PlateDetect():
@@ -277,9 +277,9 @@ class PlateDetect():
         detections['detection_scores'] = detections['detection_scores'][:index]
         detections['detection_classes'] = detections['detection_classes'][:index]
         
-        print(detections['detection_boxes'])
-        print(detections['detection_scores'])
-        print(detections['detection_classes'])
+        # print(detections['detection_boxes'])
+        # print(detections['detection_scores'])
+        # print(detections['detection_classes'])
 
         dets = {}
         dets['num_detections'] = detections['num_detections']

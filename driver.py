@@ -83,105 +83,142 @@ def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str) -> cv2.Mat:
     # cv2.waitKey(0)
     return result
 
-# Function to scan an image
-def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, img_array:np.ndarray, save:str, log:bool=True) -> cv2.Mat:
-    # Detect the plate
-    crop, coords = pd.detect_and_crop(img_array)
-    # print(coords)
+# Function to read a plate detection image
+def plate_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> cv2.Mat:
+    # Crop the plate
+    crop = img[coords[0]:coords[2], coords[1]:coords[3]]
+    if save: cv2.imwrite('plate.png', crop)
 
-    # If the plate is detected
-    if crop is not None:
-        # Process the image
-        # crop = process_image(crop, False)
-        crop = np.array(crop, dtype=np.uint8)
+    # Convert the image to the correct format for CNN
+    crop = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    crop = np.array(crop, dtype=np.uint8)
+    crop = Image.fromarray(crop)
+    
+    # Extract single characters from the image
+    chars = extract_characters(crop, show=True, save=True)
 
-        # If the image has been processed
-        if crop is not None:
-            crop = Image.fromarray(crop)
-            
-            # Extract single characters from the image
-            chars = extract_characters(crop, show=True, save=True)
+    # If there are less than 7 characters, retry the scanning using remove_shadows function
+    if len(chars) < 7:
+        # Extract single characters from the image
+        chars = extract_characters(crop, True, show=True, save=True)
 
-            # If there are less than 7 characters, retry the scanning using remove_shadows function
-            if len(chars) < 7:
-                # Extract single characters from the image
-                chars = extract_characters(crop, True, show=True, save=True)
-
-                # If there are less than 7 characters recognized, the plate is not valid
-                if len(chars) < 7:
-                    if log:
-                        print(TEXT_RED + '>> Recognised only {} characters out of 7.'.format(len(chars)) + TEXT_RESET)
-                    return img
-
-            # Predict all characters
-            ocr = ''
-            confidence = []
-            for char in chars:
-                ch, cd = cnn_driver.forward(char)
-                ocr += ch
-                confidence.append(cd)
+        # If there are less than 7 characters recognized, the plate is not valid
+        if len(chars) < 7:
             if log:
-                print(TEXT_BLUE + '>> Recognised plate number w/ processing: ' + ocr + TEXT_RESET)
+                print(TEXT_RED + '>> Recognised only {} characters out of 7.'.format(len(chars)) + TEXT_RESET)
+            return img
 
-            # If the plate is predicted
-            if ocr:
-                # If there are more than 7 characters recognized, check the first 2 characters
-                # If the first 2 characters are numbers, remove them
-                index = 0
-                for _ in range(2):
-                    if len(ocr) > 7 and ocr[index].isdecimal():
-                        ocr = ocr[1:]
-                        confidence = np.delete(confidence, index)
-                    else:
-                        index = 1
+    # Predict all characters
+    ocr = ''
+    confidence = []
+    for char in chars:
+        ch, cd = cnn_driver.forward(char)
+        ocr += ch
+        confidence.append(cd)
+    if log:
+        print(TEXT_BLUE + '>> Recognised plate number w/ processing: ' + ocr + TEXT_RESET)
 
-                # Check if there are at least 3 numbers in sequence
-                index = 2
-                for _ in range(3):
-                    if len(ocr) > 7:
-                        if ocr[index].isdecimal():
-                            # No letters found
-                            if ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
-                                break
-                            # Remove letters in position index + 1
-                            elif not ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
-                                ocr = ocr[:index + 1] + ocr[index + 2:]
-                                confidence = np.delete(confidence, index + 1)
-                                continue
-                            # Remove letters in position index + 2
-                            elif ocr[index + 1].isdecimal() and not ocr[index + 2].isdecimal():
-                                ocr = ocr[:index + 2] + ocr[index + 3:]
-                                confidence = np.delete(confidence, index + 2)
-                                continue
-                        # Remove letter in position index
-                        elif not ocr[index].isdecimal() and ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
-                            ocr = ocr[:index] + ocr[index + 1:]
-                            confidence = np.delete(confidence, index)
-                            continue                                
-
-                # If there are more than 7 characters recognized, remove those with the lowest confidence
-                while len(ocr) > 7:
-                    min = np.argmin(confidence)
-                    confidence = np.delete(confidence, min)
-                    ocr = ocr[:min] + ocr[min+1:]
-
-                # Print the text
-                if log:
-                    print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
-                res = write_ocr(img, coords, ocr)
-
-                # Save the image
-                if save is not False:
-                    cv2.imwrite(save, res)
-                else: 
-                    return res
+    # If the plate is predicted
+    if ocr:
+        # If there are more than 7 characters recognized, check the first 2 characters
+        # If the first 2 characters are numbers, remove them
+        index = 0
+        for _ in range(2):
+            if len(ocr) > 7 and ocr[index].isdecimal():
+                ocr = ocr[1:]
+                confidence = np.delete(confidence, index)
             else:
-                if log:
-                    print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
-    else:
+                index = 1
+
+        # Check if there are at least 3 numbers in sequence
+        index = 2
+        for _ in range(3):
+            if len(ocr) > 7:
+                if ocr[index].isdecimal():
+                    # No letters found
+                    if ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
+                        break
+                    # Remove letters in position index + 1
+                    elif not ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
+                        ocr = ocr[:index + 1] + ocr[index + 2:]
+                        confidence = np.delete(confidence, index + 1)
+                        continue
+                    # Remove letters in position index + 2
+                    elif ocr[index + 1].isdecimal() and not ocr[index + 2].isdecimal():
+                        ocr = ocr[:index + 2] + ocr[index + 3:]
+                        confidence = np.delete(confidence, index + 2)
+                        continue
+                # Remove letter in position index
+                elif not ocr[index].isdecimal() and ocr[index + 1].isdecimal() and ocr[index + 2].isdecimal():
+                    ocr = ocr[:index] + ocr[index + 1:]
+                    confidence = np.delete(confidence, index)
+                    continue                                
+
+        # If there are more than 7 characters recognized, remove those with the lowest confidence
+        while len(ocr) > 7:
+            min = np.argmin(confidence)
+            confidence = np.delete(confidence, min)
+            ocr = ocr[:min] + ocr[min+1:]
+
+        # Print the text
         if log:
-            print(TEXT_RED + '>> Plate not detected.' + TEXT_RESET)
+            print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
+        res = write_ocr(img, coords, ocr)
+
+        # Save the image
+        if save is not False:
+            cv2.imwrite(save, res)
+        return res
+
+    elif log:
+        print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
+    
+    return img
+
+# Function to scan an image
+def scan_image(cnn_driver:Driver, pd:PlateDetect, img:cv2.Mat, save:str, log:bool=True) -> cv2.Mat:
+    # Get all detections
+    img_array = np.asarray(img)
+    detections = pd.detect_and_crop(img_array)
+
+    # If there's no detections, return the original image
+    num_detections = detections['num_detections']
+    if num_detections == 0:
+        if log: print(TEXT_RED + '>> No detections found.' + TEXT_RESET)
         return img
+
+    # Retrive data from detections
+    detection_boxes = detections['detection_boxes']
+    detection_scores = detections['detection_scores']
+    detection_classes = detections['detection_classes']
+    
+    # Loop through all detections
+    for i in range(num_detections):
+        # Get the bounding box
+        coords = detection_boxes[i]
+        # Get the confidence score
+        score = detection_scores[i]
+        # Get the class
+        class_id = detection_classes[i]
+
+        # If the class_id is 1 (plate), extract the plate text
+        if class_id == 1:
+            # Get the coordinates of the plate
+            coords[0] = coords[0] * img.shape[0] - 5
+            coords[1] = coords[1] * img.shape[1] - 5
+            coords[2] = coords[2] * img.shape[0] + 5
+            coords[3] = coords[3] * img.shape[1] + 5
+            coords = coords.astype(int)
+
+            # Process the plate
+            img = plate_detect(cnn_driver, img, coords, save, log)
+
+        # Else it's a text area
+        else:
+            # Scan the text
+            pass
+
+
         
     return img
 
@@ -220,8 +257,7 @@ def scan_video(cnn_driver:Driver, pd:PlateDetect, video_file:str, save:str) -> N
             if ret:
                 # Scan the frame as an image
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                img_array = np.asarray(frame)
-                res = scan_image(cnn_driver, pd, frame, img_array, False, False)
+                res = scan_image(cnn_driver, pd, frame, False, False)
 
                 # Write the image to the video file
                 res = cv2.cvtColor(res, cv2.COLOR_BGR2RGB)
@@ -321,11 +357,10 @@ def driver() -> None:
 
             # Load the image
             img = cv2.imread(input_path + img_path)
-            img_array = np.asarray(img)
 
             if save != False: save_name = os.path.join(output_path, save)
             else: save_name = False
-            scan_image(cnn_driver, plate_detect, img, img_array, save_name)
+            scan_image(cnn_driver, plate_detect, img, save_name)
             continue
 
         # Scan a directory
@@ -363,11 +398,10 @@ def driver() -> None:
 
                 # Load the image
                 img = cv2.imread(img_name)
-                img_array = np.asarray(img)
 
                 if save != False: save_name = os.path.join(output_path, save, im)
                 else: save_name = False
-                scan_image(cnn_driver, plate_detect, img, img_array, save_name)
+                scan_image(cnn_driver, plate_detect, img, save_name)
 
             continue
 
