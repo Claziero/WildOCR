@@ -13,8 +13,9 @@ For every image (character) in the path, the dataset is generated with the follo
         - Images have shape (20, 40) = 800 pixels
     - The image character is added to the dataset
     - The image character is converted to a list of ints
-        - (22 letters + 10 numbers) = 32 ints
-        - letters 'I', 'O', 'Q', 'U' are not allowed
+        - (26*2 letters + 10 numbers) = 62 ints
+        - 62 ints represent, in order, numbers, capital letters, small letters
+          (same order as ASCII standard)
 """
 
 import os
@@ -30,27 +31,23 @@ TEXT_YELLOW = '\033[93m'
 
 # Function to calculate the gap of the characters
 def calculate_gap(c:str) -> int:
-    # Numbers
+    # Numbers (ints from 0 to 9)
     if ord(c) <= 57:
-        return -39
+        return 48
 
-    # Letters
-    gap = 0
-    if ord(c) > ord('I'):
-        gap += 1
-    if ord(c) > ord('O'):
-        gap += 1
-    if ord(c) > ord('Q'):
-        gap += 1
-    if ord(c) > ord('U'):
-        gap += 1
-    return gap
+    # Capital letters (ints from 10 to 35)
+    if ord(c) >= 65 and ord(c) <= 90:
+        return 55
 
-# Function to convert a character to a list of 32 ints
+    # Small letters (ints from 36 to 61)
+    if ord(c) >= 97 and ord(c) <= 122:
+        return 61
+
+# Function to convert a character to a list of 62 ints
 def convert_to_ints(char:str) -> list[int]:
     # Convert the "char" to a list of ints
-    ints = [0] * 32
-    ints[ord(char) - 65 - calculate_gap(char)] = 1
+    ints = [0] * 62
+    ints[ord(char) - calculate_gap(char)] = 1
     return ints
 
 # Function to generate the dataset in .csv format
@@ -66,6 +63,7 @@ def generate_dataset_csv(path:str, filename:str) -> None:
         for elem in images:
             if elem.endswith('.png'):
                 img = Image.open(os.path.join(path, dir, elem))
+                img = img.convert('L')
                 img = np.array(img)
                 img = img.flatten()
                 img = img.tolist()
