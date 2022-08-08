@@ -19,6 +19,7 @@ For every image (character) in the path, the dataset is generated with the follo
 """
 
 import os
+import cv2
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -28,6 +29,9 @@ from PIL import Image
 TEXT_RESET = '\033[0m'
 TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
+
+# Define paths
+binary_images_path = '../CharacterGenerator/charactersBinary/'
 
 # Function to calculate the gap of the characters
 def calculate_gap(c:str) -> int:
@@ -52,19 +56,37 @@ def convert_to_ints(char:str) -> list[int]:
 
 # Function to generate the dataset in .csv format
 def generate_dataset_csv(path:str, filename:str) -> None:
+    # Create the output image folder if it doesn't exist
+    if not os.path.exists(binary_images_path):
+        os.makedirs(binary_images_path)
+
     # Create a new output file "filename"
     dataset = open(filename, 'w+')
 
     # Get all the images in the path
     dirs = os.listdir(path)
     for dir in tqdm(dirs):
+        # Create a new folder for the images of the current character
+        if not os.path.exists(binary_images_path + dir):
+            os.makedirs(binary_images_path + dir)
+
         # Get all the images in the directory
         images = os.listdir(os.path.join(path, dir))
         for elem in images:
             if elem.endswith('.png'):
                 img = Image.open(os.path.join(path, dir, elem))
+
+                # Convert the image to grayscale form
                 img = img.convert('L')
                 img = np.array(img)
+
+                # Convert the image to binary
+                img = cv2.threshold(img, 128, 255, cv2.THRESH_OTSU)[1]
+
+                # Save the image
+                cv2.imwrite(os.path.join(binary_images_path, dir, elem), img)
+                
+                # Convert the image to a list of ints
                 img = img.flatten()
                 img = img.tolist()
                 img = str(img)[1:-1].replace(' ', '').strip()

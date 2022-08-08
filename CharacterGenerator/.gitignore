@@ -1,4 +1,6 @@
 output/
 chars/
 characters/
+charactersBinary/
+charactersColour/
 __pycache__/
