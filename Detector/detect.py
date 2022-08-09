@@ -253,7 +253,7 @@ class Detector():
         return
 
     # Function to process an image and return the cropped plate image and its coordinates
-    def detect_and_crop(self, image:np.ndarray, save:bool=False) -> dict:
+    def detect(self, image:np.ndarray, save:bool=False) -> dict:
         # Create the tensor to feed into the NN
         input_tensor = tf.convert_to_tensor(np.expand_dims(image, 0), dtype=tf.float32)
         detections = self.detect_fn(input_tensor)
@@ -319,4 +319,4 @@ class Detector():
 
 # pd.load_from_checkpoint()
 # img = cv2.imread('t12.jpg')
-# pd.detect_and_crop(img, save=True)
+# pd.detect(img, save=True)
