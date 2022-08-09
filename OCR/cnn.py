@@ -2,9 +2,9 @@
   Implementation of a Convolution Neural Network
   for Italian Number Plates recognition.
 
-  > Input image is a grayscale image of a character of size <w:20, h:40, c:1>
+  > Input image is a grayscale image of a character of size <w:28, h:28, c:1>
 
-  > Output is a vector of length 32, where each element is a probability of the
+  > Output is a vector of length 62, where each element is a probability of the
     corresponding digit to be a certain letter/number.
 
   > The network consists of a series of convolutional layers, followed by a
@@ -41,28 +41,42 @@ class ConvNet(nn.Module):
         self.valid_accuracy_array = []
 
         # Network parameters
-        self.l1_out_ch = 2
-        self.l2_out_ch = 4
-        self.fc1_in_dim = self.l2_out_ch * 3 * 8
+        self.l1_out_ch = 32
+        self.l2_out_ch = 64
+        self.l3_out_ch = 128
+        self.l4_out_ch = 256
+        self.fc1_in_dim = self.l4_out_ch * 4 * 4
         self.fc1_out_dim = self.fc1_in_dim // 2
-        self.fc2_out_dim = 32
+        self.fc2_out_dim = 62
 
-        # Initial image size: <w:20, h:40, c:1>
-        # Convolutional layer 1: <w:20, h:40> -> <w:9, h:19>
+        # Initial image size: <w:28, h:28, c:1>
+        # Convolutional layer 1: <w:28, h:28> -> <w:26, h:26>
         self.layer1 = torch.nn.Sequential(
-            torch.nn.Conv2d(1, self.l1_out_ch, kernel_size = 3),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size = 2, stride = 2)
+            torch.nn.Conv2d(1, self.l1_out_ch, kernel_size = 3), # <w:26, h:26>
+            torch.nn.ReLU()
         )
 
-        # Convolutional layer 2: <w:9, h:19> -> <w:3, h:8>
+        # Convolutional layer 2: <w:26, h:26> -> <w:24, h:24>
         self.layer2 = torch.nn.Sequential(
-            torch.nn.Conv2d(self.l1_out_ch, self.l2_out_ch, kernel_size = 3),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size = 2, stride = 2)
+            torch.nn.Conv2d(self.l1_out_ch, self.l2_out_ch, kernel_size = 3), # <w:24, h:24>
+            torch.nn.ReLU()
         )
 
-        # Fully connected layer: output size = 32 neurons
+        # Convolutional layer 3: <w:24, h:24> -> <w:11, h:11>
+        self.layer3 = torch.nn.Sequential(
+            torch.nn.Conv2d(self.l2_out_ch, self.l3_out_ch, kernel_size = 3), # <w:22, h:22>
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size = 2, stride = 2) # <w:11, h:11>
+        )
+
+        # Convolutional layer 3: <w:11, h:11> -> <w:4, h:4>
+        self.layer4 = torch.nn.Sequential(
+            torch.nn.Conv2d(self.l3_out_ch, self.l4_out_ch, kernel_size = 3), # <w:9, h:9>
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size = 2, stride = 2) # <w:4, h:4>
+        )
+
+        # Fully connected layer: output size = 62 neurons
         self.fc = torch.nn.Sequential(
             torch.nn.Linear(self.fc1_in_dim, self.fc1_out_dim),
             torch.nn.ReLU(),
@@ -74,6 +88,8 @@ class ConvNet(nn.Module):
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         out = self.layer1(x)
         out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
         out = out.view(-1, self.fc1_in_dim)
         out = self.fc(out)
         return out
@@ -88,7 +104,7 @@ class ConvNet(nn.Module):
         for epoch in range(epochs):
             for i, data in enumerate(X_train.values):
                 # Convert the data to torch tensor
-                data = torch.from_numpy(data.reshape(1, 1, 40, 20)).float().to(self.gpu)
+                data = torch.from_numpy(data.reshape(1, 1, 28, 28)).float().to(self.gpu)
                 # Forward pass
                 output = self.forward(data).to(self.gpu)
                 # Calculate the loss
@@ -128,7 +144,7 @@ class ConvNet(nn.Module):
             correct = loss = 0
             for i, data in enumerate(X_valid.values):
                 # Convert the data to torch tensor
-                data = torch.from_numpy(data.reshape(1, 1, 40, 20)).float().to(self.gpu)
+                data = torch.from_numpy(data.reshape(1, 1, 28, 28)).float().to(self.gpu)
                 # Forward pass
                 output = self.forward(data).to(self.gpu)
                 # Calculate the loss
@@ -156,7 +172,7 @@ class ConvNet(nn.Module):
             correct = 0
             for i, data in enumerate(X_test.values):
                 # Convert the data to torch tensor
-                data = torch.from_numpy(data.reshape(1, 1, 40, 20)).float().to(self.gpu)
+                data = torch.from_numpy(data.reshape(1, 1, 28, 28)).float().to(self.gpu)
                 # Forward pass
                 output = self.forward(data).to(self.cpu)
                 # Check the results
@@ -193,35 +209,31 @@ class ConvNet(nn.Module):
         else: return 0
 
     # Function to calculate the gap of the characters
-    def calculate_gap(self, index:int) -> int:
-        # Numbers
-        if index >= 22:
-            return -39
+    def calculate_gap(self, c:int) -> int:
+        # Numbers (ints from 0 to 9)
+        if c <= 9:
+            return 48
 
-        # Letters
-        gap = 0
-        if index > ord('I') - 66:
-            gap += 1
-        if index > ord('O') - 67:
-            gap += 1
-        if index > ord('Q') - 68:
-            gap += 1
-        if index > ord('U') - 69:
-            gap += 1
-        return gap
+        # Capital letters (ints from 10 to 35)
+        if c >= 10 and c <= 35:
+            return 55
+
+        # Small letters (ints from 36 to 61)
+        if c >= 36 and c <= 61:
+            return 61
 
     # Function to convert the network output to a string
-    def output_to_string(self, net_output:torch.Tensor) -> tuple[str, float]:
+    def output_to_string(self, net_output:torch.Tensor) -> str:
         pred = np.argmax(net_output)
-        return chr(pred + 65 + self.calculate_gap(pred)), net_output[pred]
+        return chr(pred + self.calculate_gap(pred))
 
-    # Function to save the predictions in string format
+    # Function to save the predictions in string format (IMG, PRED, REAL)
     def save_predictions(self, X_test:np.ndarray, Y_pred:torch.Tensor, Y_test:np.ndarray, filename:str) -> None:
         f = open(filename, 'a+')
         
         # Convert the output to a string
-        out_string = self.output_to_string(Y_pred)[0]
-        test_string = self.output_to_string(Y_test)[0]
+        out_string = self.output_to_string(Y_pred)
+        test_string = self.output_to_string(Y_test)
         X_test = str(np.array(X_test).flatten().tolist())[1:-1].replace(' ', '').strip()
 
         # Write the output to the file
@@ -245,7 +257,7 @@ class ConvNet(nn.Module):
         fig = plt.figure(figsize=(rows*2, rows), constrained_layout=True)
         for i in range(num):
             # Get the image, prediction and test string            
-            img_array = np.array(img.iloc[i]).reshape(40, 20)
+            img_array = np.array(img.iloc[i]).reshape(28, 28)
             
             prediction = Y_pred.iloc[i]
 

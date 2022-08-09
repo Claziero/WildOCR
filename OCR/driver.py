@@ -51,8 +51,8 @@ class Driver:
         data = pd.read_csv(filename, header=None)
 
         # Split and normalize the dataset
-        self.X_train = data.iloc[:, :800] / 255
-        self.Y_train = data.iloc[:, 801:]
+        self.X_train = data.iloc[:, :784] / 255
+        self.Y_train = data.iloc[:, 785:]
         
         print(TEXT_GREEN + '>> Train dataset loaded.' + TEXT_RESET)
         return
@@ -64,8 +64,8 @@ class Driver:
         data = pd.read_csv(filename, header=None)
 
         # Split and normalize the dataset
-        self.X_test = data.iloc[:, :800] / 255
-        self.Y_test = data.iloc[:, 801:]
+        self.X_test = data.iloc[:, :784] / 255
+        self.Y_test = data.iloc[:, 785:]
         
         print(TEXT_GREEN + '>> Test dataset loaded.' + TEXT_RESET)
         return
@@ -77,8 +77,8 @@ class Driver:
         data = pd.read_csv(filename, header=None)
 
         # Split and normalize the dataset
-        self.X_valid = data.iloc[:, :800] / 255
-        self.Y_valid = data.iloc[:, 801:]
+        self.X_valid = data.iloc[:, :784] / 255
+        self.Y_valid = data.iloc[:, 785:]
         
         print(TEXT_GREEN + '>> Validation dataset loaded.' + TEXT_RESET)
         return
@@ -144,15 +144,15 @@ class Driver:
         return
 
     # Function to execute the forward pass (un-labeled data)
-    def forward(self, img:np.ndarray) -> tuple[str, float]:
+    def forward(self, img:np.ndarray) -> str:
         with torch.no_grad():
             # Convert the img to torch tensor
-            img = torch.from_numpy(img.reshape(1, 1, 40, 20)).float().to(self.net.gpu)
+            img = torch.from_numpy(img.reshape(1, 1, 28, 28)).float().to(self.net.gpu)
             # Forward pass
             output = self.net.forward(img).to(self.net.cpu)
             # Convert the output to string
-            ocr, cd = self.net.output_to_string(output[0])
-        return ocr, cd
+            ocr = self.net.output_to_string(output[0])
+        return ocr
 
 
 # Main function
@@ -259,9 +259,9 @@ def driver_main():
                 d.save_model_path = save
                 d.save_model = True
 
-            epochs = input('Enter the number of epochs to train [Enter = \"30\"]: ')
+            epochs = input('Enter the number of epochs to train [Enter = \"100\"]: ')
             if epochs == '':
-                epochs = 30
+                epochs = 100
             epochs = int(epochs)
 
             learning_rate = input('Enter the learning rate [Enter = \"0.0001\"]: ')
