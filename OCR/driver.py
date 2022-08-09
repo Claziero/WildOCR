@@ -4,7 +4,8 @@ import torch
 import numpy as np
 import pandas as pd
 
-from cnn import ConvNet
+from cnn_text import ConvNet as TextNet
+from cnn_plate import ConvNet as PlateNet
 
 # Define colors
 TEXT_RESET = '\033[0m'
@@ -15,7 +16,15 @@ TEXT_BLUE = '\033[94m'
 
 # Class to drive the program
 class Driver:
-    def __init__(self) -> None:
+    def __init__(self, cnn_type:str='plate') -> None:
+        # CNN_type can be 'plate' or 'text' and switches CNN parameters
+        self.cnn_type:str = cnn_type
+        self.text_Xmax:int = 784
+        self.plate_Xmax:int = 800
+        self.Xmax:int = self.text_Xmax if self.cnn_type == 'text' else self.plate_Xmax
+        self.img_shape = (1, 1, 28, 28) if self.cnn_type == 'text' else (1, 1, 40, 20)
+        self.net = TextNet() if self.cnn_type == 'text' else PlateNet()
+
         if torch.cuda.is_available():
             print(TEXT_GREEN 
                 + '>> CUDA is available ({}).'.format(torch.cuda.get_device_name())
@@ -33,7 +42,7 @@ class Driver:
         self.X_valid:pd.DataFrame = None
         self.Y_valid:pd.DataFrame = None
 
-        self.net:ConvNet = ConvNet().to(gpu)
+        self.net = self.net.to(gpu)
         self.net.gpu = gpu
         self.net.cpu = cpu
 
@@ -51,8 +60,8 @@ class Driver:
         data = pd.read_csv(filename, header=None)
 
         # Split and normalize the dataset
-        self.X_train = data.iloc[:, :784] / 255
-        self.Y_train = data.iloc[:, 785:]
+        self.X_train = data.iloc[:, :self.Xmax] / 255
+        self.Y_train = data.iloc[:, self.Xmax + 1:]
         
         print(TEXT_GREEN + '>> Train dataset loaded.' + TEXT_RESET)
         return
@@ -64,8 +73,8 @@ class Driver:
         data = pd.read_csv(filename, header=None)
 
         # Split and normalize the dataset
-        self.X_test = data.iloc[:, :784] / 255
-        self.Y_test = data.iloc[:, 785:]
+        self.X_test = data.iloc[:, :self.Xmax] / 255
+        self.Y_test = data.iloc[:, self.Xmax + 1:]
         
         print(TEXT_GREEN + '>> Test dataset loaded.' + TEXT_RESET)
         return
@@ -77,8 +86,8 @@ class Driver:
         data = pd.read_csv(filename, header=None)
 
         # Split and normalize the dataset
-        self.X_valid = data.iloc[:, :784] / 255
-        self.Y_valid = data.iloc[:, 785:]
+        self.X_valid = data.iloc[:, :self.Xmax] / 255
+        self.Y_valid = data.iloc[:, self.Xmax + 1:]
         
         print(TEXT_GREEN + '>> Validation dataset loaded.' + TEXT_RESET)
         return
@@ -147,7 +156,7 @@ class Driver:
     def forward(self, img:np.ndarray) -> str:
         with torch.no_grad():
             # Convert the img to torch tensor
-            img = torch.from_numpy(img.reshape(1, 1, 28, 28)).float().to(self.net.gpu)
+            img = torch.from_numpy(img.reshape(self.img_shape)).float().to(self.net.gpu)
             # Forward pass
             output = self.net.forward(img).to(self.net.cpu)
             # Convert the output to string

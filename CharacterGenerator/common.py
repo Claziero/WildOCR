@@ -298,9 +298,6 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
     # Apply transformations to the image
     img = apply_trfs(img, rm_shdw, False, show, save)[0]
 
-    # Add a white border to the image
-    # img = cv2.copyMakeBorder(img, 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=(255, 255, 255))
-
     # If the image has black text on white background, invert the colors
     if np.sum(img) > (img.shape[0] * img.shape[1] * 255) / 2:
         img = 255 - img

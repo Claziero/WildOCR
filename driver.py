@@ -17,47 +17,11 @@ TEXT_GREEN = '\033[92m'
 TEXT_YELLOW = '\033[93m'
 TEXT_BLUE = '\033[94m'
 
-# Dimension constants
-# Car plates are 200x44 pixels
-auto_image_width, auto_image_height = 200, 44
-auto_min_ar, auto_max_ar = 1.5, 6 # Correct AR = 4.54
-
-# Moto plates are 106x83 pixels
-moto_image_width, moto_image_height = 106, 83
-moto_min_ar, moto_max_ar = 1, 1.5 # Correct AR = 1.27
-
 # Define paths
 data_path = 'data/'
 input_path = data_path + 'input/'
 output_path = data_path + 'output/'
 video_path = data_path + 'video/'
-
-# Function to convert an image to the correct format for CNN
-def process_image(img:cv2.Mat, log:bool=True) -> np.ndarray:
-    # Check the image dimensions
-    img_ar = img.shape[1] / img.shape[0]
-    # print('Image dimensions: ' + str(img.shape[1]) + 'x' + str(img.shape[0]))
-    # print('Image aspect ratio: ' + str(img_ar))
-
-    # If it's a car plate, resize it to the correct dimensions
-    if img_ar >= auto_min_ar and img_ar <= auto_max_ar:
-        # Resize the image to the correct dimensions
-        img = cv2.resize(img, (auto_image_width, auto_image_height))
-
-    # If it's a motorcycle plate, resize it to the correct dimensions
-    elif img_ar >= moto_min_ar and img_ar <= moto_max_ar:
-        # Resize the image to the correct dimensions
-        img = cv2.resize(img, (moto_image_width, moto_image_height))
-
-    # If there's an error
-    else:
-        if log: print(TEXT_RED + '>> Image dimensions are not correct.' + TEXT_RESET)
-        return None
-
-    # Convert the image to a numpy array
-    img = np.array(img, dtype=np.uint8)
-
-    return img
 
 # Function to write the OCR string to the image
 def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str) -> cv2.Mat:
@@ -77,13 +41,11 @@ def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str) -> cv2.Mat:
         pt2 = (coords[3], coords[2]),
         color = (0, 255, 0),
         thickness = 3)
-    
-    # cv2.imshow("Result", result)
-    # cv2.waitKey(0)
+
     return result
 
 # Function to read a plate detection image
-def plate_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> cv2.Mat:
+def plate_detect(plate_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> cv2.Mat:
     # Crop the plate
     crop = img[coords[0]:coords[2], coords[1]:coords[3]]
     if save: cv2.imwrite('plate.png', crop)
@@ -110,7 +72,7 @@ def plate_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log
     ocr = ''
     confidence = []
     for char in chars:
-        ch, cd = cnn_driver.forward(char)
+        ch, cd = plate_cnn_driver.forward(char)
         ocr += ch
         confidence.append(cd)
     if log:
@@ -174,7 +136,7 @@ def plate_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log
     return img
 
 # Function to read a text detection image
-def text_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> cv2.Mat:
+def text_detect(text_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> cv2.Mat:
     # Crop the text
     crop = img[coords[0]:coords[2], coords[1]:coords[3]]
     if save: cv2.imwrite('text.png', crop)
@@ -190,15 +152,15 @@ def text_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:
     ocr = ''
     for line in line_chars:
         for char in line:
-            ch = cnn_driver.forward(char)
+            ch = text_cnn_driver.forward(char)
             print(ch)
             ocr += ch
         ocr += ' '
 
     # Print the text
     if log:
-        print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
-    res = write_ocr(img, coords, ocr)
+        print(TEXT_BLUE + '>> Recognised text: ' + ocr + TEXT_RESET)
+    res = write_ocr(img, coords, ocr.upper())
 
     # Save the image
     if save is not False:
@@ -206,7 +168,7 @@ def text_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:
     return res
 
 # Function to scan an image
-def scan_image(cnn_driver:Driver, pd:Detector, img:cv2.Mat, save:str, log:bool=True) -> cv2.Mat:
+def scan_image(plate_cnn_driver:Driver, text_cnn_driver:Driver, pd:Detector, img:cv2.Mat, save:str, log:bool=True) -> cv2.Mat:
     # Get all detections
     img_array = np.asarray(img)
     detections = pd.detect(img_array)
@@ -241,17 +203,17 @@ def scan_image(cnn_driver:Driver, pd:Detector, img:cv2.Mat, save:str, log:bool=T
         # If the class_id is 1 (plate), extract the plate text
         if class_id == 1:
             # Process the plate
-            img = plate_detect(cnn_driver, img, coords, save, log)
+            img = plate_detect(plate_cnn_driver, img, coords, save, log)
 
         # Else it's a text area
         else:
             # Scan the text
-            img = text_detect(cnn_driver, img, coords, save, log)
+            img = text_detect(text_cnn_driver, img, coords, save, log)
 
     return img
 
 # Function to scan a video file
-def scan_video(cnn_driver:Driver, pd:Detector, video_file:str, save:str) -> None:
+def scan_video(plate_cnn_driver:Driver, text_cnn_driver:Driver, pd:Detector, video_file:str, save:str) -> None:
     # Open the video file
     cap = cv2.VideoCapture(video_file)
 
@@ -285,7 +247,7 @@ def scan_video(cnn_driver:Driver, pd:Detector, video_file:str, save:str) -> None
             if ret:
                 # Scan the frame as an image
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                res = scan_image(cnn_driver, pd, frame, False, False)
+                res = scan_image(plate_cnn_driver, text_cnn_driver, pd, frame, False, False)
 
                 # Write the image to the video file
                 res = cv2.cvtColor(res, cv2.COLOR_BGR2RGB)
@@ -319,8 +281,10 @@ def driver() -> None:
     if not os.path.exists(input_path):
         os.makedirs(input_path)
 
-    # Create a NN for OCR functionality
-    cnn_driver = Driver()
+    # Create a NN for plate OCR functionality
+    plate_cnn_driver = Driver('plate')
+    # Create a NN for text OCR functionality
+    text_cnn_driver = Driver('text')
 
     # Create a NN for plate detection functionality
     detector = Detector('Detector/')
@@ -344,11 +308,17 @@ def driver() -> None:
 
         # Load pretrained models of OCR NN and Detector NN
         if choice == '1':
-            # Load the OCR NN
-            load = input('Enter the path to the pretrained model for OCR NN [Enter = \"OCR/model.pkl\"]: ')
+            # Load the PLATE OCR NN
+            load = input('Enter the path to the pretrained model for PLATE OCR NN [Enter = \"OCR/model_plate.pkl\"]: ')
             if load == '':
-                load = 'OCR/model.pkl'
-            cnn_driver.load_model(load)
+                load = 'OCR/model_plate.pkl'
+            plate_cnn_driver.load_model(load)
+
+            # Load the TEXT OCR NN
+            load = input('Enter the path to the pretrained model for TEXT OCR NN [Enter = \"OCR/model_text.pkl\"]: ')
+            if load == '':
+                load = 'OCR/model_text.pkl'
+            text_cnn_driver.load_model(load)
 
             # Load the Detector NN
             detector.load_from_checkpoint()
@@ -360,11 +330,17 @@ def driver() -> None:
             if not nn_loaded:
                 print(TEXT_RED + '>> NNs not loaded.' + TEXT_RESET)
 
-                # Load the OCR NN
-                load = input('Enter the path to the pretrained model for OCR NN [Enter = \"OCR/model.pkl\"]: ')
+                # Load the PLATE OCR NN
+                load = input('Enter the path to the pretrained model for PLATE OCR NN [Enter = \"OCR/model_plate.pkl\"]: ')
                 if load == '':
-                    load = 'OCR/model.pkl'
-                cnn_driver.load_model(load)
+                    load = 'OCR/model_plate.pkl'
+                plate_cnn_driver.load_model(load)
+
+                # Load the TEXT OCR NN
+                load = input('Enter the path to the pretrained model for TEXT OCR NN [Enter = \"OCR/model_text.pkl\"]: ')
+                if load == '':
+                    load = 'OCR/model_text.pkl'
+                text_cnn_driver.load_model(load)
 
                 # Load the Detector NN
                 detector.load_from_checkpoint()
@@ -388,7 +364,7 @@ def driver() -> None:
 
             if save != False: save_name = os.path.join(output_path, save)
             else: save_name = False
-            scan_image(cnn_driver, detector, img, save_name)
+            scan_image(plate_cnn_driver, text_cnn_driver, detector, img, save_name)
             continue
 
         # Scan a directory
@@ -396,11 +372,17 @@ def driver() -> None:
             if not nn_loaded:
                 print(TEXT_RED + '>> NNs not loaded.' + TEXT_RESET)
 
-                # Load the OCR NN
-                load = input('Enter the path to the pretrained model for OCR NN [Enter = \"OCR/model.pkl\"]: ')
+                # Load the PLATE OCR NN
+                load = input('Enter the path to the pretrained model for PLATE OCR NN [Enter = \"OCR/model_plate.pkl\"]: ')
                 if load == '':
-                    load = 'OCR/model.pkl'
-                cnn_driver.load_model(load)
+                    load = 'OCR/model_plate.pkl'
+                plate_cnn_driver.load_model(load)
+
+                # Load the TEXT OCR NN
+                load = input('Enter the path to the pretrained model for TEXT OCR NN [Enter = \"OCR/model_text.pkl\"]: ')
+                if load == '':
+                    load = 'OCR/model_text.pkl'
+                text_cnn_driver.load_model(load)
 
                 # Load the Detector NN
                 detector.load_from_checkpoint()
@@ -429,7 +411,7 @@ def driver() -> None:
 
                 if save != False: save_name = os.path.join(output_path, save, im)
                 else: save_name = False
-                scan_image(cnn_driver, detector, img, save_name)
+                scan_image(plate_cnn_driver, text_cnn_driver, detector, img, save_name)
 
             continue
 
@@ -438,11 +420,17 @@ def driver() -> None:
             if not nn_loaded:
                 print(TEXT_RED + '>> NNs not loaded.' + TEXT_RESET)
 
-                # Load the OCR NN
-                load = input('Enter the path to the pretrained model for OCR NN [Enter = \"OCR/model.pkl\"]: ')
+                # Load the PLATE OCR NN
+                load = input('Enter the path to the pretrained model for PLATE OCR NN [Enter = \"OCR/model_plate.pkl\"]: ')
                 if load == '':
-                    load = 'OCR/model.pkl'
-                cnn_driver.load_model(load)
+                    load = 'OCR/model_plate.pkl'
+                plate_cnn_driver.load_model(load)
+
+                # Load the TEXT OCR NN
+                load = input('Enter the path to the pretrained model for TEXT OCR NN [Enter = \"OCR/model_text.pkl\"]: ')
+                if load == '':
+                    load = 'OCR/model_text.pkl'
+                text_cnn_driver.load_model(load)
 
                 # Load the Detector NN
                 detector.load_from_checkpoint()
@@ -465,7 +453,7 @@ def driver() -> None:
 
             # Scan the video
             print('Scanning video \"' + video + '\" ...')
-            scan_video(cnn_driver, detector, video, save)
+            scan_video(plate_cnn_driver, text_cnn_driver, detector, video, save)
             continue
             
         # If there's an error
