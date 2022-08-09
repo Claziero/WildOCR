@@ -6,10 +6,9 @@ import numpy as np
 sys.path.insert(0, './OCR')
 sys.path.insert(0, './CharacterGenerator')
 
-from PIL import Image
 from OCR.driver import Driver
 from Detector.detect import Detector
-from CharacterGenerator.common import extract_characters
+from CharacterGenerator.common import extract_characters_plate, extract_characters_text
 
 # Define colors
 TEXT_RESET = '\033[0m'
@@ -89,18 +88,17 @@ def plate_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log
     crop = img[coords[0]:coords[2], coords[1]:coords[3]]
     if save: cv2.imwrite('plate.png', crop)
 
-    # Convert the image to the correct format for CNN
+    # Convert the image to grayscale
     crop = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
     crop = np.array(crop, dtype=np.uint8)
-    crop = Image.fromarray(crop)
     
     # Extract single characters from the image
-    chars = extract_characters(crop, show=True, save=True)
+    chars = extract_characters_plate(crop, show=True, save=True)
 
     # If there are less than 7 characters, retry the scanning using remove_shadows function
     if len(chars) < 7:
         # Extract single characters from the image
-        chars = extract_characters(crop, True, show=True, save=True)
+        chars = extract_characters_plate(crop, True, show=True, save=True)
 
         # If there are less than 7 characters recognized, the plate is not valid
         if len(chars) < 7:
@@ -175,11 +173,43 @@ def plate_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log
     
     return img
 
+# Function to read a text detection image
+def text_detect(cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> cv2.Mat:
+    # Crop the text
+    crop = img[coords[0]:coords[2], coords[1]:coords[3]]
+    if save: cv2.imwrite('text.png', crop)
+
+    # Convert the image to the correct format for CNN
+    crop = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    crop = np.array(crop, dtype=np.uint8)
+    
+    # Extract single characters from the image
+    line_chars = extract_characters_text(crop, show=True, save=True)
+
+    # For each line, predict the characters
+    ocr = ''
+    for line in line_chars:
+        for char in line:
+            ch = cnn_driver.forward(char)
+            print(ch)
+            ocr += ch
+        ocr += ' '
+
+    # Print the text
+    if log:
+        print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
+    res = write_ocr(img, coords, ocr)
+
+    # Save the image
+    if save is not False:
+        cv2.imwrite(save, res)
+    return res
+
 # Function to scan an image
 def scan_image(cnn_driver:Driver, pd:Detector, img:cv2.Mat, save:str, log:bool=True) -> cv2.Mat:
     # Get all detections
     img_array = np.asarray(img)
-    detections = pd.detect_and_crop(img_array)
+    detections = pd.detect(img_array)
 
     # If there's no detections, return the original image
     num_detections = detections['num_detections']
@@ -201,25 +231,23 @@ def scan_image(cnn_driver:Driver, pd:Detector, img:cv2.Mat, save:str, log:bool=T
         # Get the class
         class_id = detection_classes[i]
 
+        # Get the coordinates of the area
+        coords[0] = coords[0] * img.shape[0] - 5
+        coords[1] = coords[1] * img.shape[1] - 5
+        coords[2] = coords[2] * img.shape[0] + 5
+        coords[3] = coords[3] * img.shape[1] + 5
+        coords = coords.astype(int)
+
         # If the class_id is 1 (plate), extract the plate text
         if class_id == 1:
-            # Get the coordinates of the plate
-            coords[0] = coords[0] * img.shape[0] - 5
-            coords[1] = coords[1] * img.shape[1] - 5
-            coords[2] = coords[2] * img.shape[0] + 5
-            coords[3] = coords[3] * img.shape[1] + 5
-            coords = coords.astype(int)
-
             # Process the plate
             img = plate_detect(cnn_driver, img, coords, save, log)
 
         # Else it's a text area
         else:
             # Scan the text
-            pass
+            img = text_detect(cnn_driver, img, coords, save, log)
 
-
-        
     return img
 
 # Function to scan a video file
