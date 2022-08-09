@@ -3,8 +3,6 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
-from PIL import Image
-
 # Define colors
 TEXT_RESET = '\033[0m'
 TEXT_GREEN = '\033[92m'
@@ -61,9 +59,7 @@ def remove_shadows(im:cv2.Mat, show:bool=False, save:bool=False) -> cv2.Mat:
     return thr_img
 
 # Function to apply transformations to images before character extraction
-def apply_trfs(plate:Image.Image, rm_shdw:bool = False, show:bool=False, save:bool=False) -> tuple[cv2.Mat, bool]:
-    # Convert the image in cv2 format
-    img = np.asarray(plate)
+def apply_trfs(img:cv2.Mat, rm_shdw:bool = False, warp:bool=True, show:bool=False, save:bool=False) -> tuple[cv2.Mat, bool]:
     if show: cv2.imshow('img', img)
     if save: cv2.imwrite('gray.png', img)
 
@@ -73,9 +69,12 @@ def apply_trfs(plate:Image.Image, rm_shdw:bool = False, show:bool=False, save:bo
         if show: cv2.imshow('rm_shdw', img)
 
     # Rectify the image
-    img, warped = rectify_plate(img, show, save)
-    if show: cv2.imshow('rect', img)
-    if save: cv2.imwrite('rect.png', img)
+    if warp:
+        img, warped = rectify_plate(img, show, save)
+        if show: cv2.imshow('rect', img)
+        if save: cv2.imwrite('rect.png', img)
+    else:
+        warped = False
     
     # If the image is too dark, brighten it
     if np.mean(img) < 120:
@@ -215,9 +214,9 @@ def rectify_plate(plate:cv2.Mat, show:bool=False, save:bool=False) -> tuple[cv2.
     return plate, warped
 
 # Function to extract single characters from the plate 
-def extract_characters(plate:Image.Image, rm_shdw:bool=False, show:bool=False, save:bool=False) -> list[cv2.Mat]:
+def extract_characters_plate(plate:cv2.Mat, rm_shdw:bool=False, show:bool=False, save:bool=False) -> list[cv2.Mat]:
     # Apply transformations to the image
-    img, warped = apply_trfs(plate, rm_shdw, show, save)
+    img, warped = apply_trfs(plate, rm_shdw, True, show, save)
 
     # Add a white border to the image
     img = cv2.copyMakeBorder(img, 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=(255, 255, 255))
@@ -293,3 +292,141 @@ def extract_characters(plate:Image.Image, rm_shdw:bool=False, show:bool=False, s
         cv2.destroyAllWindows()
     
     return characters
+
+# Function to extract single characters from a text
+def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, save:bool=False) -> list[list[cv2.Mat]]:
+    # Apply transformations to the image
+    img = apply_trfs(img, rm_shdw, False, show, save)[0]
+
+    # Add a white border to the image
+    # img = cv2.copyMakeBorder(img, 2, 2, 2, 2, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+
+    # If the image has black text on white background, invert the colors
+    if np.sum(img) > (img.shape[0] * img.shape[1] * 255) / 2:
+        img = 255 - img
+    
+    # Find lines of text in the image
+    # Threshold the image
+    thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    if show: cv2.imshow('thresh', thresh)
+    if save: cv2.imwrite('thresh.png', thresh)
+
+    # Dilate the image
+    kernel = np.ones((1, 5), np.uint8)
+    dilate = cv2.dilate(thresh, kernel, iterations=1)
+    if show: cv2.imshow('dilate', dilate)
+    if save: cv2.imwrite('dilate.png', dilate)
+
+    # Find the contours of the image
+    contours = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+
+    # Create a list to store the lines
+    lines = []
+    result_chars = []
+
+    im2 = img.copy()
+    for cnt in contours:
+        x, y, w, h = cv2.boundingRect(cnt)
+        cv2.rectangle(im2, (x, y), (x + w, y + h), (255, 255, 255), 2)
+
+        # The aspect ratio doesn't have to be vertical
+        if w / h < 0.5:
+            continue
+
+        # Extract the line from the image
+        a = y - 5 if y > 5 else 0
+        b = y + h + 5 if y + h < img.shape[0] - 5 else img.shape[0] - 1
+        c = x - 5 if x > 5 else 0
+        d = x + w + 5 if x + w < img.shape[1] - 5 else img.shape[1] - 1
+        # line = img[y-5:y+h+5, x-5:x+w+5]
+        line = img[a:b, c:d]
+        lines.append((line, x, y, w, h))
+    
+    # Show the contours found
+    if show: cv2.imshow('contours', im2)
+    if save: cv2.imwrite('contours.png', im2)
+
+    # Order found contours by y position
+    lines = sorted(lines, key=lambda x: x[2])
+    if show:
+        for i, line in enumerate(lines):
+            cv2.imshow('line' + str(i), line[0])
+
+    # Create a list to store the characters
+    characters = []
+    positions = []
+    positions_cp = []
+
+    # For each line, extract the characters
+    for line in lines:
+        # Find the contours of the image
+        contours = cv2.findContours(line[0], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
+
+        # Sort the contours by area
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+        # Create a list to store the characters
+        characters = []
+        positions = []
+        positions_cp = []
+
+        # For each contour, extract the character
+        for cnt in contours:
+            # Get the bounding rectangle
+            x, y, w, h = cv2.boundingRect(cnt)
+
+            # If the area is too small or too large, ignore it
+            if w * h < 100 or w * h > 3000:
+                continue
+            
+            # Extract the character from the image
+            char = line[0][y:y+h, x:x+w]
+
+            # If the character is white on black background, invert it
+            if np.sum(char) > (w * h * 255) / 2.5:
+                char = 255 - char
+
+            # Resize the character to a fixed size
+            char = cv2.resize(char, (28, 28))
+
+            # Add the character to the list
+            if show:
+                # Add a black border to the character
+                char_cp = np.zeros((32, 32))
+                char_cp[2:30, 2:30] = char
+                char_cp[0:2, :] = 0
+                char_cp[30:32, :] = 0
+                char_cp[:, 0:2] = 0
+                char_cp[:, 30:32] = 0
+                positions_cp.append((char_cp, x, y, w, h))
+
+            positions.append((char, x, y, w, h))
+
+        # Sort the characters by x position
+        positions = sorted(positions, key=lambda x: x[1])
+        if show:
+            char_cp = []
+            positions_cp = sorted(positions_cp, key=lambda x: x[1])
+            for pos in positions_cp:
+                char_cp.append(pos[0])
+
+        # Add the characters to the list
+        for pos in positions:
+            characters.append(pos[0])
+
+        # Plot found characters
+        if show:
+            matplotlib.use('TkAgg')
+            for i, char in enumerate(char_cp):
+                plt.subplot(1, len(char_cp), i + 1)
+                plt.imshow(char, cmap='gray')
+                plt.axis('off')
+            plt.show()
+
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
+        # Append this line of characters to the result list
+        result_chars.append((characters))
+
+    return result_chars
