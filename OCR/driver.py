@@ -166,7 +166,14 @@ class Driver:
 
 # Main function
 def driver_main():
-    d = Driver()
+    # Select the NN type to use
+    t = input(TEXT_YELLOW + 'Enter the NN to use [1=PLATE | 2=TEXT] [Enter = \"1\"]: ' + TEXT_RESET)
+    if t == '1' or t == '': d = Driver('plate')
+    elif t == '2': d = Driver('text')
+    else:
+        print(TEXT_RED + '>> Invalid option.' + TEXT_RESET)
+        return
+
     choice = 1
 
     while choice != '0':
