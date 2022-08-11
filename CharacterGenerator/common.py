@@ -303,14 +303,9 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
         img = 255 - img
     
     # Find lines of text in the image
-    # Threshold the image
-    thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    if show: cv2.imshow('thresh', thresh)
-    if save: cv2.imwrite('thresh.png', thresh)
-
     # Dilate the image
     kernel = np.ones((1, 5), np.uint8)
-    dilate = cv2.dilate(thresh, kernel, iterations=1)
+    dilate = cv2.dilate(img, kernel, iterations=1)
     if show: cv2.imshow('dilate', dilate)
     if save: cv2.imwrite('dilate.png', dilate)
 
@@ -326,7 +321,7 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
         x, y, w, h = cv2.boundingRect(cnt)
         cv2.rectangle(im2, (x, y), (x + w, y + h), (255, 255, 255), 2)
 
-        # The aspect ratio doesn't have to be vertical
+        # The aspect ratio must not be vertical
         if w / h < 0.5:
             continue
 
@@ -343,11 +338,14 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
     if show: cv2.imshow('contours', im2)
     if save: cv2.imwrite('contours.png', im2)
 
-    # Order found contours by y position
-    lines = sorted(lines, key=lambda x: x[2])
+    # Order found contours by y and then x position
+    lines = sorted(lines, key=lambda x: (x[2], x[1]))
     if show:
         for i, line in enumerate(lines):
             cv2.imshow('line' + str(i), line[0])
+    if save: 
+        for i, line in enumerate(lines):
+            cv2.imwrite('line' + str(i) + '.png', line[0])
 
     # Create a list to store the characters
     characters = []

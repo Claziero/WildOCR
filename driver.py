@@ -24,23 +24,39 @@ output_path = data_path + 'output/'
 video_path = data_path + 'video/'
 
 # Function to write the OCR string to the image
-def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str) -> cv2.Mat:
-    write_point = (coords[1] - 0, coords[0] - 10)
+def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str, area_type:str='plate') -> cv2.Mat:
+    write_point = (coords[1], coords[0] - 30)
 
-    result = cv2.putText(img,
-        text = ocr_string,
-        org = write_point,
-        fontFace = cv2.FONT_HERSHEY_SIMPLEX,
-        fontScale = 1,
-        color = (0, 255, 0),
-        thickness = 2,
-        lineType = cv2.LINE_AA)
+    if area_type == 'plate':
+        font_color = (0, 255, 255)
+    elif area_type == 'text':
+        font_color = (0, 255, 0)
 
+    # Draw the bounding box
     result = cv2.rectangle(img,
         pt1 = (coords[1], coords[0]),
         pt2 = (coords[3], coords[2]),
-        color = (0, 255, 0),
+        color = font_color,
         thickness = 3)
+    
+    # Draw a rectangle to write on
+    text_size = cv2.getTextSize(ocr_string, cv2.FONT_HERSHEY_SIMPLEX, 1, 2)[0]
+    text_width, text_height = text_size
+    result = cv2.rectangle(result,
+        pt1 = write_point,
+        pt2 = (write_point[0] + text_width, write_point[1] + text_height + 10),
+        color = font_color,
+        thickness = cv2.FILLED)
+
+    # Write the text
+    result = cv2.putText(result,
+        text = ocr_string,
+        org = (write_point[0], write_point[1] + 25),
+        fontFace = cv2.FONT_HERSHEY_SIMPLEX,
+        fontScale = 1,
+        color = (0, 0, 0),
+        thickness = 2,
+        lineType = cv2.LINE_AA)
 
     return result
 
@@ -123,7 +139,7 @@ def plate_detect(plate_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:st
         # Print the text
         if log:
             print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
-        res = write_ocr(img, coords, ocr)
+        res = write_ocr(img, coords, ocr, 'plate')
 
         # Save the image
         if save is not False:
@@ -153,14 +169,13 @@ def text_detect(text_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str,
     for line in line_chars:
         for char in line:
             ch = text_cnn_driver.forward(char)
-            print(ch)
             ocr += ch
         ocr += ' '
 
     # Print the text
     if log:
         print(TEXT_BLUE + '>> Recognised text: ' + ocr + TEXT_RESET)
-    res = write_ocr(img, coords, ocr.upper())
+    res = write_ocr(img, coords, ocr, 'text')
 
     # Save the image
     if save is not False:
