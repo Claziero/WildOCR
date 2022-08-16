@@ -302,9 +302,10 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
     if np.sum(img) > (img.shape[0] * img.shape[1] * 255) / 2:
         img = 255 - img
     
+    # --------------------------------LINE DETECTION--------------------------------
     # Find lines of text in the image
     # Dilate the image
-    kernel = np.ones((1, 5), np.uint8)
+    kernel = np.ones((1, 15), np.uint8)
     dilate = cv2.dilate(img, kernel, iterations=1)
     if show: cv2.imshow('dilate', dilate)
     if save: cv2.imwrite('dilate.png', dilate)
@@ -314,9 +315,8 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
 
     # Create a list to store the lines
     lines = []
-    result_chars = []
-
     im2 = img.copy()
+
     for cnt in contours:
         x, y, w, h = cv2.boundingRect(cnt)
         cv2.rectangle(im2, (x, y), (x + w, y + h), (255, 255, 255), 2)
@@ -327,10 +327,10 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
 
         # Extract the line from the image
         a = y - 5 if y > 5 else 0
-        b = y + h + 5 if y + h < img.shape[0] - 5 else img.shape[0] - 1
+        b = y + h + 5 if y + h < im2.shape[0] - 5 else im2.shape[0] - 1
         c = x - 5 if x > 5 else 0
-        d = x + w + 5 if x + w < img.shape[1] - 5 else img.shape[1] - 1
-        # line = img[y-5:y+h+5, x-5:x+w+5]
+        d = x + w + 5 if x + w < im2.shape[1] - 5 else im2.shape[1] - 1
+        
         line = img[a:b, c:d]
         lines.append((line, x, y, w, h))
     
@@ -343,19 +343,80 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
     if show:
         for i, line in enumerate(lines):
             cv2.imshow('line' + str(i), line[0])
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
     if save: 
         for i, line in enumerate(lines):
             cv2.imwrite('line' + str(i) + '.png', line[0])
+    
+    
+    # --------------------------------WORD DETECTION--------------------------------
+    result_words = []
 
+    # For each line, find words inside them
+    for line in lines:
+        # Dilate the image
+        kernel = np.ones((1, 5), np.uint8)
+        dilate = cv2.dilate(line[0], kernel, iterations=1)
+        if show: cv2.imshow('dilate', dilate)
+        if save: cv2.imwrite('dilate.png', dilate)
+
+        # Find the contours of the image
+        contours = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+
+        # Create a list to store the words
+        words = []
+        im2 = line[0].copy()
+
+        # For each contour, extract the word
+        for cnt in contours:
+            x, y, w, h = cv2.boundingRect(cnt)
+            cv2.rectangle(im2, (x, y), (x + w, y + h), (255, 255, 255), 2)
+
+            # The aspect ratio must not be vertical
+            if w / h < 0.5:
+                continue
+
+            # Extract the word from the image
+            a = y - 5 if y > 5 else 0
+            b = y + h + 5 if y + h < im2.shape[0] - 5 else im2.shape[0] - 1
+            c = x - 5 if x > 5 else 0
+            d = x + w + 5 if x + w < im2.shape[1] - 5 else im2.shape[1] - 1
+
+            word = line[0][a:b, c:d]
+            words.append((word, x, y, w, h))
+        
+        # Show the contours found
+        if show: cv2.imshow('contours', im2)
+        if save: cv2.imwrite('contours.png', im2)
+
+        # Order found contours by x position
+        words = sorted(words, key=lambda x: x[1])
+        if show:
+            for i, word in enumerate(words):
+                cv2.imshow('word' + str(i), word[0])
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        
+        if save: 
+            for i, word in enumerate(words):
+                cv2.imwrite('word' + str(i) + '.png', word[0])
+
+        result_words.extend(words)
+    
+
+    # --------------------------------CHARACTER DETECTION--------------------------------
     # Create a list to store the characters
     characters = []
     positions = []
     positions_cp = []
+    result_chars = []
 
-    # For each line, extract the characters
-    for line in lines:
+    # For each word, extract the characters
+    for word in result_words:
         # Find the contours of the image
-        contours = cv2.findContours(line[0], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
+        contours = cv2.findContours(word[0], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
 
         # Sort the contours by area
         contours = sorted(contours, key=cv2.contourArea, reverse=True)
@@ -375,7 +436,7 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
                 continue
             
             # Extract the character from the image
-            char = line[0][y:y+h, x:x+w]
+            char = word[0][y:y+h, x:x+w]
 
             # If the character is white on black background, invert it
             if np.sum(char) > (w * h * 255) / 2.5:
