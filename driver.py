@@ -61,7 +61,7 @@ def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str, area_type:str='plat
     return result
 
 # Function to read a plate detection image
-def plate_detect(plate_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> cv2.Mat:
+def plate_detect(plate_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> tuple[str, str]:
     # Crop the plate
     crop = img[coords[0]:coords[2], coords[1]:coords[3]]
     if save: cv2.imwrite('plate.png', crop)
@@ -82,7 +82,7 @@ def plate_detect(plate_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:st
         if len(chars) < 7:
             if log:
                 print(TEXT_RED + '>> Recognised only {} characters out of 7.'.format(len(chars)) + TEXT_RESET)
-            return img
+            return None, None
 
     # Predict all characters
     ocr = ''
@@ -139,20 +139,15 @@ def plate_detect(plate_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:st
         # Print the text
         if log:
             print(TEXT_BLUE + '>> Recognised plate number: ' + ocr + TEXT_RESET)
-        res = write_ocr(img, coords, ocr, 'plate')
-
-        # Save the image
-        if save is not False:
-            cv2.imwrite(save, res)
-        return res
 
     elif log:
         print(TEXT_RED + '>> Plate not recognised.' + TEXT_RESET)
+        return None, None
     
-    return img
+    return ocr, 'plate'
 
 # Function to read a text detection image
-def text_detect(text_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> cv2.Mat:
+def text_detect(text_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> tuple[str, str]:
     # Crop the text
     crop = img[coords[0]:coords[2], coords[1]:coords[3]]
     if save: cv2.imwrite('text.png', crop)
@@ -175,12 +170,8 @@ def text_detect(text_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str,
     # Print the text
     if log:
         print(TEXT_BLUE + '>> Recognised text: ' + ocr + TEXT_RESET)
-    res = write_ocr(img, coords, ocr, 'text')
-
-    # Save the image
-    if save is not False:
-        cv2.imwrite(save, res)
-    return res
+    
+    return ocr, 'text'
 
 # Function to scan an image
 def scan_image(plate_cnn_driver:Driver, text_cnn_driver:Driver, pd:Detector, img:cv2.Mat, save:str, log:bool=True) -> cv2.Mat:
@@ -196,15 +187,13 @@ def scan_image(plate_cnn_driver:Driver, text_cnn_driver:Driver, pd:Detector, img
 
     # Retrive data from detections
     detection_boxes = detections['detection_boxes']
-    detection_scores = detections['detection_scores']
     detection_classes = detections['detection_classes']
     
     # Loop through all detections
+    recognitions = []
     for i in range(num_detections):
         # Get the bounding box
         coords = detection_boxes[i]
-        # Get the confidence score
-        score = detection_scores[i]
         # Get the class
         class_id = detection_classes[i]
 
@@ -218,12 +207,23 @@ def scan_image(plate_cnn_driver:Driver, text_cnn_driver:Driver, pd:Detector, img
         # If the class_id is 1 (plate), extract the plate text
         if class_id == 1:
             # Process the plate
-            img = plate_detect(plate_cnn_driver, img, coords, save, log)
+            ocr, typ = plate_detect(plate_cnn_driver, img, coords, save, log)
+            if ocr is not None:
+                recognitions.append((ocr, typ, coords))
 
         # Else it's a text area
         else:
             # Scan the text
-            img = text_detect(text_cnn_driver, img, coords, save, log)
+            ocr, typ = text_detect(text_cnn_driver, img, coords, save, log)
+            recognitions.append((ocr, typ, coords))
+
+    # Draw the detections
+    for ocr, typ, coords in recognitions:
+        img = write_ocr(img, coords, ocr, typ)
+
+    # Save the image
+    if save is not False:
+        cv2.imwrite(save, img)
 
     return img
 
