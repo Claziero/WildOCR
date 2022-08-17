@@ -305,7 +305,7 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
     # --------------------------------LINE DETECTION--------------------------------
     # Find lines of text in the image
     # Dilate the image
-    kernel = np.ones((1, 15), np.uint8)
+    kernel = np.ones((1, 20), np.uint8)
     dilate = cv2.dilate(img, kernel, iterations=1)
     if show: cv2.imshow('dilate', dilate)
     if save: cv2.imwrite('dilate.png', dilate)
@@ -323,6 +323,10 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
 
         # The aspect ratio must not be vertical
         if w / h < 0.5:
+            continue
+
+        # Adapt the area limits using the area of the image
+        if w * h < img.shape[0] * img.shape[1] / 10:
             continue
 
         # Extract the line from the image
@@ -357,7 +361,7 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
     # For each line, find words inside them
     for line in lines:
         # Dilate the image
-        kernel = np.ones((1, 5), np.uint8)
+        kernel = np.ones((1, 9), np.uint8)
         dilate = cv2.dilate(line[0], kernel, iterations=1)
         if show: cv2.imshow('dilate', dilate)
         if save: cv2.imwrite('dilate.png', dilate)
@@ -376,6 +380,10 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
 
             # The aspect ratio must not be vertical
             if w / h < 0.5:
+                continue
+
+            # Adapt the area limits using the area of the image
+            if w * h < line[3] * line[4] / 10:
                 continue
 
             # Extract the word from the image
@@ -416,7 +424,7 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
     # For each word, extract the characters
     for word in result_words:
         # Find the contours of the image
-        contours = cv2.findContours(word[0], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[0]
+        contours = cv2.findContours(word[0], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
 
         # Sort the contours by area
         contours = sorted(contours, key=cv2.contourArea, reverse=True)
@@ -430,9 +438,16 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
         for cnt in contours:
             # Get the bounding rectangle
             x, y, w, h = cv2.boundingRect(cnt)
+            x -= 1 if x > 0 else 0
+            y -= 1 if y > 0 else 0
+            w += 2
+            h += 2
 
             # If the area is too small or too large, ignore it
-            if w * h < 100 or w * h > 3000:
+            # Adapt the area limits using the area of the image
+            if w * h > word[0].shape[0] * word[0].shape[1] / 2:
+                continue
+            if w * h < word[0].shape[0] * word[0].shape[1] / 25:
                 continue
             
             # Extract the character from the image
@@ -442,8 +457,26 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
             if np.sum(char) > (w * h * 255) / 2.5:
                 char = 255 - char
 
+            # If the character is like "I" or "i", it has a special w/h ratio
+            if w / h < 0.3:
+                # Resize the image to fit into 28 pixel of height
+                char = cv2.resize(char, (int(28 * w / h), 28))
+
+                # Add white padding at left and right to reach 28 pixels of width
+                char = cv2.copyMakeBorder(char, 0, 0, int((28 - char.shape[1]) / 2), int((28 - char.shape[1]) / 2), cv2.BORDER_CONSTANT, value=(255, 255, 255))
+
             # Resize the character to a fixed size
             char = cv2.resize(char, (28, 28))
+
+            # char = cv2.resize(char, (24, 24))
+            # Add a white border to the character
+            # char_cp = np.zeros((28, 28))
+            # char_cp[2:26, 2:26] = char
+            # char_cp[0:2, :] = 255
+            # char_cp[26:28, :] = 255
+            # char_cp[:, 0:2] = 255
+            # char_cp[:, 26:28] = 255
+            # char = char_cp
 
             # Add the character to the list
             if show:
