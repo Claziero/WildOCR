@@ -152,6 +152,12 @@ class Driver:
         self.net.show_predictions(num, filename)
         return
 
+    # Function to show the confusion matrix
+    def show_confusion_matrix(self, filename:str) -> None:
+        # Show the confusion matrix
+        self.net.calc_confusion_matrix(filename)
+        return
+
     # Function to execute the forward pass (un-labeled data)
     def forward(self, img:np.ndarray) -> str:
         with torch.no_grad():
@@ -184,6 +190,7 @@ def driver_main():
         print('  3. Test the network.')
         print('  4. Load a network pretrained model.')
         print('  5. Show some images with their predictions.')
+        print('  6. Show the confusion matrix.')
         print('  0. Exit.')
         choice = input(TEXT_YELLOW + 'Enter your choice: ' + TEXT_RESET)
 
@@ -342,6 +349,15 @@ def driver_main():
             num = int(num)
 
             d.show_preds(preds, num)
+            continue
+
+        # Show the confusion matrix
+        elif choice == '6':
+            preds = input('Enter the path to the predictions file [Enter = \"preds.csv\"]: ')
+            if preds == '':
+                preds = 'preds.csv'
+
+            d.show_confusion_matrix(preds)
             continue
 
         # Exit

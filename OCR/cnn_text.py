@@ -300,3 +300,34 @@ class ConvNet(nn.Module):
         plot.subplots_adjust(wspace=0.5)
         plt.savefig('graphs.png')
         return
+
+    # Function to show the confusion matrix
+    def calc_confusion_matrix(self, preds:str='preds.csv') -> None:
+        from sklearn.metrics import confusion_matrix
+        import seaborn as sns
+        
+        # Read the predictions file and get the images and predictions
+        lines = pd.read_csv(preds, header=None)
+        Y_pred = lines.iloc[:, -2]
+        Y_test = lines.iloc[:, -1]
+
+        # Calculate the confusion matrix
+        cm = confusion_matrix(Y_test, Y_pred)
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        cm *= 100
+        cm = np.around(cm, decimals=2)
+        class_names = [chr(i + self.calculate_gap(i)) for i in range(62)]
+        dataframe = pd.DataFrame(cm, index=class_names, columns=class_names)
+
+        # Plot the confusion matrix
+        plt.figure(figsize=(17, 13))
+        sns.heatmap(dataframe, annot=False, cmap='YlGnBu')
+
+        plt.title('Confusion Matrix')
+        plt.ylabel('Carattere reale')
+        plt.xlabel('Carattere predetto')
+
+        plt.savefig('confusion_matrix.png')
+        plt.show()         
+
+        return
