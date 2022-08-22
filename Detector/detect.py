@@ -252,6 +252,32 @@ class Detector():
 
         return
 
+    # Function to calculate the IoU of two bounding boxes
+    def calculate_iou(self, bb1:list[float], bb2:list[float]) -> float:
+        # bb[0] is the y-coordinate of the top left corner of the bounding box
+        # bb[1] is the x-coordinate of the top left corner of the bounding box
+        # bb[2] is the y-coordinate of the bottom right corner of the bounding box
+        # bb[3] is the x-coordinate of the bottom right corner of the bounding box
+        x_left = max(bb1[1], bb2[1])
+        y_top = max(bb1[0], bb2[0])
+        x_right = min(bb1[3], bb2[3])
+        y_bottom = min(bb1[2], bb2[2])
+
+        # If the areas don't overlap
+        if x_right < x_left or y_bottom < y_top:
+            return 0.0
+
+        # Calculate the overlap area
+        intersection_area = (x_right - x_left) * (y_bottom - y_top)
+
+        # Calculate the area of the union of both bounding boxes
+        bb1_area = (bb1[2] - bb1[0]) * (bb1[3] - bb1[1])
+        bb2_area = (bb2[2] - bb2[0]) * (bb2[3] - bb2[1])
+        union_area = bb1_area + bb2_area - intersection_area
+
+        iou = intersection_area / union_area
+        return iou
+
     # Function to process an image and return the cropped plate image and its coordinates
     def detect(self, image:np.ndarray) -> dict:
         # Create the tensor to feed into the NN
@@ -269,7 +295,7 @@ class Detector():
         # Filter detections by score
         index = 0
         for i in detections['detection_scores']:
-            if i >= 0.3: index += 1
+            if i >= 0.2: index += 1
             else: break
 
         detections['num_detections'] = index
@@ -280,6 +306,25 @@ class Detector():
         # print(detections['detection_boxes'])
         # print(detections['detection_scores'])
         # print(detections['detection_classes'])
+
+        # For all detections, if the class is 1 (plate), check if there are text detections overlapping
+        # the plate. If there are, discard the text detection.
+        indexes_to_discard = []
+        for i in range(detections['num_detections']):
+            if detections['detection_classes'][i] == 1:
+                for j in range(detections['num_detections']):
+                    if i != j and detections['detection_classes'][j] == 0:
+                        # Calculate the IoU between the plate and the text detection
+                        iou = self.calculate_iou(detections['detection_boxes'][i], detections['detection_boxes'][j])
+                        if iou > 0.9:
+                            indexes_to_discard.append(j)
+
+        # Discard the detections found
+        for i in indexes_to_discard:
+            detections['num_detections'] -= 1
+            detections['detection_boxes'] = np.delete(detections['detection_boxes'], i, 0)
+            detections['detection_scores'] = np.delete(detections['detection_scores'], i, 0)
+            detections['detection_classes'] = np.delete(detections['detection_classes'], i, 0)                   
 
         dets = {}
         dets['num_detections'] = detections['num_detections']
@@ -297,7 +342,7 @@ class Detector():
             self.category_index,
             use_normalized_coordinates = True,
             max_boxes_to_draw = 10,
-            min_score_thresh = .3,
+            min_score_thresh = .2,
             agnostic_mode = False
         )
 

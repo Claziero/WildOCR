@@ -64,6 +64,7 @@ def write_ocr(img:cv2.Mat, coords:list[int], ocr_string:str, area_type:str='plat
 def plate_detect(plate_cnn_driver:Driver, img:cv2.Mat, coords:list[int], save:str, log:bool=True) -> tuple[str, str]:
     # Crop the plate
     crop = img[coords[0]:coords[2], coords[1]:coords[3]]
+    crop = cv2.resize(crop, (220, 50))
     if save: cv2.imwrite('plate.png', crop)
 
     # Convert the image to grayscale

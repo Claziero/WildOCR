@@ -445,8 +445,8 @@ def extract_characters_text(img:cv2.Mat, rm_shdw:bool=False, show:bool=False, sa
 
             # If the area is too small or too large, ignore it
             # Adapt the area limits using the area of the image
-            if w * h > word[0].shape[0] * word[0].shape[1] / 2:
-                continue
+            # if w * h > word[0].shape[0] * word[0].shape[1] / 2:
+            #     continue
             if w * h < word[0].shape[0] * word[0].shape[1] / 25:
                 continue
             
